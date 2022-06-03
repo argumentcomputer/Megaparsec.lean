@@ -31,7 +31,8 @@ module Text.Megaparsec.Internal
     Result (..),
     ParsecT (..),
 
-    -- * Helper functions
+    -- * Helper functionsstructure Pos where
+  pos : Nat
     toHints,
     withHints,
     accHints,

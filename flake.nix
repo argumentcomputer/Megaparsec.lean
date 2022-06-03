@@ -8,7 +8,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    nixpkgs.url = github:nixos/nixpkgs/nixos-21.05;
+    nixpkgs.url = github:nixos/nixpkgs/nixos-21.11;
 
     flake-utils = {
       url = github:numtide/flake-utils;
@@ -44,12 +44,15 @@
           # TODO
         };
 
-        # devShell = pkgs.mkShell {
-        #   buildInputs = [
-        #     leanPkgs.lean
-        #     pkgs.hello
-        #   ];
-        # };
+        devShell = pkgs.mkShell {
+          buildInputs = [
+            pkgs.ghc
+            pkgs.cabal-install
+            pkgs.haskell-language-server
+            pkgs.haskellPackages.implicit-hie
+            leanPkgs.lean
+          ];
+        };
 
         defaultPackage = pkgs.hello;
       });
