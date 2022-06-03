@@ -1,0 +1,3 @@
+namespace Megaparsec
+
+end Megaparsec
