@@ -1,0 +1,3 @@
+[submodule "reference/megaparsec"]
+	path = reference/megaparsec
+	url = https://github.com/mrkkrp/megaparsec

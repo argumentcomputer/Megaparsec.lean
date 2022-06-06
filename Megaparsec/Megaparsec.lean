@@ -1,7 +1,6 @@
 namespace Megaparsec
 
-structure Pos where
-  pos : Nat
+abbrev Pos := Nat
 
 structure SourcePos where
   sourceName : String
@@ -49,30 +48,28 @@ inductive ParseError (S E: Type) [Stream S] where
 structure State (S E: Type) [Stream S] where
   stateInput       : S
   stateOffset      : Nat
-  statePosState    : (PosState S)
+  statePosState    : PosState S
   stateParseErrors : List (ParseError S E)
 
-structure Hints (T: Type) where
-  hints : List (ErrorItem T)
+abbrev Hints (T : Type) := List (ErrorItem T)
 
 inductive Result (S E A: Type) [Stream S] where
 | ok (x : A)
 | err (e : ParseError S E)
 
 structure Reply (S E A : Type) [Stream S] where
-  state : State S E
+  state    : State S E
   consumed : Bool
-  result : Result S E A
+  result   : Result S E A
 
 structure ParsecT (E S: Type) (M: Type -> Type) (A: Type) [Stream S] where
-  mk ::
-    (unParser :
-      (B : Type) -> (State S E) ->
-      (A -> State S E -> Hints (Stream.Token S) -> M B) -> -- Consumed-OK
-      (ParseError S E -> State S E -> M B) ->              -- Consumed-Error
-      (A -> State S E -> Hints (Stream.Token S) -> M B) -> -- Empty-OK
-      (ParseError S E -> State S E -> M B) ->              -- Empty-Error
-      M B)
+  unParser :
+    (B : Type) -> (State S E) ->
+    (A -> State S E -> Hints (Stream.Token S) -> M B) -> -- Consumed-OK
+    (ParseError S E -> State S E -> M B) ->              -- Consumed-Error
+    (A -> State S E -> Hints (Stream.Token S) -> M B) -> -- Empty-OK
+    (ParseError S E -> State S E -> M B) ->              -- Empty-Error
+    M B
 
 def pMap (E S: Type) [Stream S] (M: Type -> Type) (U V: Type) (f: U -> V) (x: ParsecT E S M U) : ParsecT E S M V  :=
   ParsecT.mk (λ (b s cok cerr eok eerr) => (x.unParser b s (cok ∘ f) cerr (eok ∘ f) eerr))
