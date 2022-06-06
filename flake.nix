@@ -34,7 +34,7 @@
         project = leanPkgs.buildLeanPackage {
           debug = false;
           name = "Megparsec.lean";
-          src = ./src;
+          src = ".";
         };
       in
       {
