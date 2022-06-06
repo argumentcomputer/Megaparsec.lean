@@ -50,7 +50,7 @@
             pkgs.cabal-install
             pkgs.haskell-language-server
             pkgs.haskellPackages.implicit-hie
-            leanPkgs.lean
+            # leanPkgs.lean
           ];
         };
 
