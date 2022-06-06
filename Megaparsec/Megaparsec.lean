@@ -1,6 +1,7 @@
 namespace Megaparsec
 
-abbrev Pos := Nat
+structure Pos where
+  pos : Nat
 
 structure SourcePos where
   sourceName : String
