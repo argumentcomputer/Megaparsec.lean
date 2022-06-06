@@ -1,2 +1,0 @@
-packages: megaparsec.cabal
-        , megaparsec-tests/megaparsec-tests.cabal
