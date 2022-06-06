@@ -34,7 +34,7 @@
         project = leanPkgs.buildLeanPackage {
           debug = false;
           name = "Megparsec.lean";
-          src = ./src;
+          src = ".";
         };
       in
       {
@@ -50,7 +50,7 @@
             pkgs.cabal-install
             pkgs.haskell-language-server
             pkgs.haskellPackages.implicit-hie
-            leanPkgs.lean
+            # leanPkgs.lean
           ];
         };
 
