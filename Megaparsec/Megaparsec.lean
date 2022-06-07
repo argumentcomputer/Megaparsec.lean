@@ -78,17 +78,13 @@ structure ParsecT (E S: Type) [Stream S] (M: Type -> Type) [Monad M] (A: Type) w
     (ParseError S E -> State S E -> M B) ->              -- Empty-Error
     M B
 
-private def run_cok (E S: Type) [Stream S] (M: Type -> Type) [Monad M] (A: Type) (a: A) (s₁: State S E) (_h: Hints (Stream.Token S)): M (Reply S E A) :=
-  pure $ Reply.mk s₁ True (Result.ok a)
-private def run_cerr (E S: Type) [Stream S] (M: Type -> Type) [Monad M] (A: Type) (err: ParseError S E) (s₁: State S E): M (Reply S E A) :=
-  pure $ Reply.mk s₁ True (Result.err err)
-private def run_eok (E S: Type) [Stream S] (M: Type -> Type) [Monad M] (A: Type) (a: A) (s₁: State S E) (_h: Hints (Stream.Token S)): M (Reply S E A) :=
-  pure $ Reply.mk s₁ False (Result.ok a)
-private def run_eerr (E S: Type) [Stream S] (M: Type -> Type) [Monad M] (A: Type) (err: ParseError S E) (s₁: State S E): M (Reply S E A) :=
-  pure $ Reply.mk s₁ False (Result.err err)
 def runParsecT (E S: Type) [Stream S] (M: Type -> Type) [Monad M] (A: Type) (x: ParsecT E S M A) (s₀: State S E): M (Reply S E A) :=
   -- I bet there's a way to apply types to a list of four functions with Applicative or something, but it's good enough for the time being.
-  x.unParser (Reply S E A) s₀ (run_cok E S M A) (run_cerr E S M A) (run_eok E S M A) (run_eerr E S M A)
+  let run_cok  := fun a s₁ _h => pure ⟨s₁, true,  .ok a⟩
+  let run_cerr := fun err s₁  => pure ⟨s₁, true,  .err err⟩
+  let run_eok  := fun a s₁ _h => pure ⟨s₁, false, .ok a⟩
+  let run_eerr := fun err s₁  => pure ⟨s₁, false, .err err⟩
+  x.unParser (Reply S E A) s₀ run_cok run_cerr run_eok run_eerr
 
 def pMap (E S: Type) [Stream S] (M: Type -> Type) [Monad M] (U V: Type) (f: U -> V) (x: ParsecT E S M U) : ParsecT E S M V  :=
   ParsecT.mk (λ (b s cok cerr eok eerr) => (x.unParser b s (cok ∘ f) cerr (eok ∘ f) eerr))
