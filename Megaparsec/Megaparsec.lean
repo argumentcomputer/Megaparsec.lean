@@ -21,7 +21,9 @@ class Stream (S: Type) where
   taknN : Nat -> S -> Option (Token × S)
   takeWhile : (Token -> Bool) -> S -> (Tokens × S)
 
--- Convention, S is state, E is Error, T is token
+-- Convention, S is state, E is Error, T is token, A is return type.
+-- Convention for optimising currying is to apply E, S then M, and leave A for the last type argument.
+-- Except for Result and Reply, where the order is S E A.
 structure PosState (S: Type) where
   pstateInput : S
   pstateOffset : Nat
@@ -58,21 +60,37 @@ inductive Result (S E A: Type) [Stream S] where
 | ok (x : A)
 | err (e : ParseError S E)
 
-structure Reply (S E A : Type) [Stream S] where
+structure Reply (S E A: Type) [Stream S] where
   state    : State S E
   consumed : Bool
   result   : Result S E A
 
-structure ParsecT (E S: Type) (M: Type -> Type) (A: Type) [Stream S] where
+structure ParsecT (E S: Type) [Stream S] (M: Type -> Type) [Monad M] (A: Type) where
   unParser :
     (B : Type) -> (State S E) ->
+    -- Return A with State S E and Hints into M B
     (A -> State S E -> Hints (Stream.Token S) -> M B) -> -- Consumed-OK
+    -- Report errors with State into M B
     (ParseError S E -> State S E -> M B) ->              -- Consumed-Error
+    -- Return A with State S E and Hints into M B
     (A -> State S E -> Hints (Stream.Token S) -> M B) -> -- Empty-OK
+    -- Report errors with State into M B
     (ParseError S E -> State S E -> M B) ->              -- Empty-Error
     M B
 
-def pMap (E S: Type) [Stream S] (M: Type -> Type) (U V: Type) (f: U -> V) (x: ParsecT E S M U) : ParsecT E S M V  :=
+private def run_cok (E S: Type) [Stream S] (M: Type -> Type) [Monad M] (A: Type) (a: A) (s₁: State S E) (_h: Hints (Stream.Token S)): M (Reply S E A) :=
+  pure $ Reply.mk s₁ True (Result.ok a)
+private def run_cerr (E S: Type) [Stream S] (M: Type -> Type) [Monad M] (A: Type) (err: ParseError S E) (s₁: State S E): M (Reply S E A) :=
+  pure $ Reply.mk s₁ True (Result.err err)
+private def run_eok (E S: Type) [Stream S] (M: Type -> Type) [Monad M] (A: Type) (a: A) (s₁: State S E) (_h: Hints (Stream.Token S)): M (Reply S E A) :=
+  pure $ Reply.mk s₁ False (Result.ok a)
+private def run_eerr (E S: Type) [Stream S] (M: Type -> Type) [Monad M] (A: Type) (err: ParseError S E) (s₁: State S E): M (Reply S E A) :=
+  pure $ Reply.mk s₁ False (Result.err err)
+def runParsecT (E S: Type) [Stream S] (M: Type -> Type) [Monad M] (A: Type) (x: ParsecT E S M A) (s₀: State S E): M (Reply S E A) :=
+  -- I bet there's a way to apply types to a list of four functions with Applicative or something, but it's good enough for the time being.
+  x.unParser (Reply S E A) s₀ (run_cok E S M A) (run_cerr E S M A) (run_eok E S M A) (run_eerr E S M A)
+
+def pMap (E S: Type) [Stream S] (M: Type -> Type) [Monad M] (U V: Type) (f: U -> V) (x: ParsecT E S M U) : ParsecT E S M V  :=
   ParsecT.mk (λ (b s cok cerr eok eerr) => (x.unParser b s (cok ∘ f) cerr (eok ∘ f) eerr))
 
 end Megaparsec
