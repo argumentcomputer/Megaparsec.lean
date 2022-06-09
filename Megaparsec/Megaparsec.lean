@@ -10,10 +10,65 @@ structure SourcePos where
   sourceLine : Pos
   sourceColumn: Pos
 
+structure PosState (S: Type) where
+  pstateInput : S
+  pstateOffset : Nat
+  pstateSourcePos : SourcePos
+  pstateLinePrefix : String
+
+inductive NonEmptyList (A: Type) where
+| nil (x: A)
+| cons (x: A) (xs: NonEmptyList A)
+  deriving BEq
+
+inductive ErrorItem (T: Type) where
+| tokens (t: NonEmptyList T)
+| label (l: NonEmptyList Char)
+| eof
+
+-- def ord2beq (T: Type) [Ord T] (x y: T): Bool :=
+--   compare x y == Ordering.eq
+
+-- def ord2beq_nel (T: Type) [Ord T] (x y: NonEmptyList T): Bool :=
+--   match x with
+--   | .nil u => match y with
+--               | .nil v => ord2beq T u v
+--               | _ => false
+--   | .cons u x₁ => match y with
+--                | .cons v y₁ => ord2beq T u v && ord2beq_nel T x₁ y₁
+--                | _ => false
+
+-- instance [Ord T]: BEq (ErrorItem T) where
+--   beq (u v: ErrorItem T) :=
+--     match u with
+--     | .tokens nelᵤ => match v with
+--                       | .tokens nelᵥ => ord2beq_nel T nelᵤ nelᵥ
+--                       | _ => false
+--     | .label nelᵤ => match v with
+--                      | .label nelᵥ => ord2beq_nel Char nelᵤ nelᵥ
+--                      | _ => false
+--     | .eof => match v with
+--               | .eof => true
+--               | _ => false
+
+-- Minimal demo for https://leanprover.zulipchat.com/#narrow/stream/113488-general/topic/Question.20about.20producing.20named.20instances/near/285589361
+--
+-- inductive K (T: Type) where
+-- | k (t: List T)
+-- | l (t: List Char)
+-- | m
+
+-- class C (A: Type) where
+--   Assoc: Type
+--   ordAssoc: Ord Assoc
+--   beqK: BEq (K Assoc)
+
 class Stream (S: Type) where
   Token : Type
-  ordToken : Ord Token
-  beqToken : BEq Token
+  ordToken : Ord Token -- TODO: Make these instances more structured, less flat
+  hashToken : Hashable Token
+  beqEi : BEq (ErrorItem Token)
+  hashEi : Hashable (ErrorItem Token)
   Tokens : Type
   ordTokens : Ord Tokens
   tokenToChunk : Token -> Tokens
@@ -27,28 +82,14 @@ class Stream (S: Type) where
 -- Convention, S is state, E is Error, T is token, A is return type.
 -- Convention for optimising currying is to apply E, S then M, and leave A for the last type argument.
 -- Except for Result, Reply and ParseError where the order is S E A.
-structure PosState (S: Type) where
-  pstateInput : S
-  pstateOffset : Nat
-  pstateSourcePos : SourcePos
-  pstateLinePrefix : String
-
-inductive NonEmptyList (A: Type) where
-| nil (x: A)
-| cons (x: A) (xs: NonEmptyList A)
-
-inductive ErrorItem (T: Type) [BEq T] where
-| tokens (t: NonEmptyList T)
-| label (l: NonEmptyList Char)
-| eof
 
 inductive ErrorFancy (E: Type) where
 | fail (msg: String)
 | indent (ord: Ordering) (fromPos: Pos) (uptoPos: Pos)
 | custom (e: E)
 
-inductive ParseError (S E: Type) [Stream S] where
-| trivial (offset: Nat) (unexpected: (@ErrorItem (Stream.Token S) (Stream.beqToken S))) (expected: List (ErrorItem (Stream.Token S)))
+inductive ParseError (S E: Type) [stream: Stream S] where
+| trivial (offset: Nat) (unexpected: (@ErrorItem (Stream.Token S))) (expected: List (@ErrorItem (Stream.Token S)))
 | fancy (offset: Nat) (expected : List (ErrorFancy E))
 
 structure State (S E: Type) [Stream S] where
@@ -80,15 +121,15 @@ structure Reply (S E A: Type) [Stream S] where
   consumed : Bool
   result   : Result S E A
 
-structure ParsecT (E S: Type) [Stream S] (M: Type -> Type) [Monad M] (A: Type) where
+structure ParsecT (E S: Type) [stream: Stream S] (M: Type -> Type) [Monad M] (A: Type) where
   unParser :
     (B : Type) -> (State S E) ->
     -- Return A with State S E and Hints into M B
-    (A -> State S E -> Hints (Stream.Token S) -> M B) -> -- Consumed-OK
+    (A -> State S E -> Hints (stream.Token) -> M B) -> -- Consumed-OK
     -- Report errors with State into M B
     (ParseError S E -> State S E -> M B) ->              -- Consumed-Error
     -- Return A with State S E and Hints into M B
-    (A -> State S E -> Hints (Stream.Token S) -> M B) -> -- Empty-OK
+    (A -> State S E -> Hints (stream.Token) -> M B) -> -- Empty-OK
     -- Report errors with State into M B
     (ParseError S E -> State S E -> M B) ->              -- Empty-Error
     M B
@@ -105,7 +146,11 @@ def pMap (E S: Type) [Stream S] (M: Type -> Type) [Monad M] (U V: Type) (f: U ->
   ParsecT.mk (λ (b s cok cerr eok eerr) => (x.unParser b s (cok ∘ f) cerr (eok ∘ f) eerr))
 
 -- | Monads M that implement primitive parsers
-class MonadParsec (E S: Type) [Stream S] (M: Type -> Type) [Monad M] [Alternative M] where
+class MonadParsec (M: Type -> Type) [Monad M] [Alternative M] where
+  E: Type
+  S: Type
+  stream: Stream S
+
   -- | Stop parsing wherever we are, and report @err@
   parseError (A: Type) (err: ParseError S E): M A
   -- | If there's no input consumed by @parser@, labels expected token with name @name_override@
@@ -127,7 +172,7 @@ class MonadParsec (E S: Type) [Stream S] (M: Type -> Type) [Monad M] [Alternativ
   -- | The parser at the end of the Stream.
   eof: M Unit
   -- |
-  token (A: Type) (matcher: Token -> Maybe A) (acc: Std.HashSet (ErrorItem Stream.Token)): M A
+  token (A: Type) (matcher: Token -> Maybe A) (acc: @Std.HashSet (ErrorItem stream.Token) stream.beqEi stream.hashEi): M A
 
 -- #check StateT
 -- #check liftM
