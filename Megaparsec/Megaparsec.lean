@@ -26,46 +26,34 @@ inductive ErrorItem (T: Type) where
 | label (l: NonEmptyList Char)
 | eof
 
--- def ord2beq (T: Type) [Ord T] (x y: T): Bool :=
---   compare x y == Ordering.eq
+def ord2beq (T: Type) [Ord T] (x y: T): Bool :=
+  compare x y == Ordering.eq
 
--- def ord2beq_nel (T: Type) [Ord T] (x y: NonEmptyList T): Bool :=
---   match x with
---   | .nil u => match y with
---               | .nil v => ord2beq T u v
---               | _ => false
---   | .cons u x₁ => match y with
---                | .cons v y₁ => ord2beq T u v && ord2beq_nel T x₁ y₁
---                | _ => false
+def ord2beq_nel (T: Type) [Ord T] (x y: NonEmptyList T): Bool :=
+  match x with
+  | .nil u => match y with
+              | .nil v => ord2beq T u v
+              | _ => false
+  | .cons u x₁ => match y with
+               | .cons v y₁ => ord2beq T u v && ord2beq_nel T x₁ y₁
+               | _ => false
 
--- instance [Ord T]: BEq (ErrorItem T) where
---   beq (u v: ErrorItem T) :=
---     match u with
---     | .tokens nelᵤ => match v with
---                       | .tokens nelᵥ => ord2beq_nel T nelᵤ nelᵥ
---                       | _ => false
---     | .label nelᵤ => match v with
---                      | .label nelᵥ => ord2beq_nel Char nelᵤ nelᵥ
---                      | _ => false
---     | .eof => match v with
---               | .eof => true
---               | _ => false
-
--- Minimal demo for https://leanprover.zulipchat.com/#narrow/stream/113488-general/topic/Question.20about.20producing.20named.20instances/near/285589361
---
--- inductive K (T: Type) where
--- | k (t: List T)
--- | l (t: List Char)
--- | m
-
--- class C (A: Type) where
---   Assoc: Type
---   ordAssoc: Ord Assoc
---   beqK: BEq (K Assoc)
+instance ord2beq_ei [Ord T]: BEq (ErrorItem T) where
+  beq (u v: ErrorItem T) :=
+    match u with
+    | .tokens nelᵤ => match v with
+                      | .tokens nelᵥ => ord2beq_nel T nelᵤ nelᵥ
+                      | _ => false
+    | .label nelᵤ => match v with
+                     | .label nelᵥ => ord2beq_nel Char nelᵤ nelᵥ
+                     | _ => false
+    | .eof => match v with
+              | .eof => true
+              | _ => false
 
 class Stream (S: Type) where
   Token : Type
-  ordToken : Ord Token -- TODO: Make these instances more structured, less flat
+  ordToken : Ord Token
   hashToken : Hashable Token
   beqEi : BEq (ErrorItem Token)
   hashEi : Hashable (ErrorItem Token)
@@ -171,12 +159,19 @@ class MonadParsec (M: Type -> Type) [Monad M] [Alternative M] where
   observing (A: Type) (parser: M A): M (@Either (ParseError S E) A)
   -- | The parser at the end of the Stream.
   eof: M Unit
-  -- |
+  -- | Parser @'token' matcher expected@ accepts tokens for which @matcher@ returns '.just', accumulates '.noithing's into an 'Std.HashSet' for error reporting.
   token (A: Type) (matcher: Token -> Maybe A) (acc: @Std.HashSet (ErrorItem stream.Token) stream.beqEi stream.hashEi): M A
-
--- #check StateT
--- #check liftM
--- #check "Esiet sveicināti!"
--- #check Unit
+  -- | Parser @'tokens' matcher chunk@ parses a chunk in a stream by comparing against @matcher@, backtracking on fail. For example: `tokens (==) "xyz"` would parse (Tokens "xyz") out of "xyzzy", leaving "zy" unparsed.
+  tokens (A: Type) (matcher: Tokens -> Tokens -> Bool) (chunk: Tokens): M Tokens
+  -- | Never fails to parse zero or more individual tokens based on a predicate. `takeWhileP (Just "name") predicate` is equivalent to `many (satisfy predicate <?> "name")`.
+  takeWhileP (A: Type) (name: Maybe String) (predicate: Token -> Bool): M Tokens
+  -- | takeWhileP variant that fails if there were zero matches
+  takeWhile1P (A: Type) (name: Maybe String) (predicate: Token -> Bool): M Tokens
+  -- | Backtracks if there aren't enough tokens in a stream to be returned as a chunk. Otherwise, take the amount of tokens and return the chunk
+  takeP (A: Type) (name: Maybe String) (n: Nat): M Tokens
+  -- | Return current 'State' of the parser
+  getParserState: M (State S E)
+  -- | Update parser state with @phi@.
+  updateParserState (phi: (State S E -> State S E)): M Unit
 
 end Megaparsec
