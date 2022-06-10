@@ -1,4 +1,6 @@
-import Std.Data.HashSet
+import Std.Data.HashSet -- for HashSet
+import Mathlib.Algebra.Group.Defs -- for Monoid
+import Init.Control -- for StateT
 
 namespace Megaparsec
 
@@ -115,23 +117,36 @@ structure ParsecT (E S: Type) [stream: Stream S] (M: Type -> Type) [Monad M] (A:
     -- Return A with State S E and Hints into M B
     (A -> State S E -> Hints (stream.Token) -> M B) -> -- Consumed-OK
     -- Report errors with State into M B
-    (ParseError S E -> State S E -> M B) ->              -- Consumed-Error
+    (ParseError S E -> State S E -> M B) ->            -- Consumed-Error
     -- Return A with State S E and Hints into M B
     (A -> State S E -> Hints (stream.Token) -> M B) -> -- Empty-OK
     -- Report errors with State into M B
-    (ParseError S E -> State S E -> M B) ->              -- Empty-Error
+    (ParseError S E -> State S E -> M B) ->            -- Empty-Error
     M B
 
 def runParsecT (E S: Type) [Stream S] (M: Type -> Type) [Monad M] (A: Type) (x: ParsecT E S M A) (s₀: State S E): M (Reply S E A) :=
-  -- I bet there's a way to apply types to a list of four functions with Applicative or something, but it's good enough for the time being.
   let run_cok  := fun a s₁ _h => pure ⟨s₁, true,  .ok a⟩
   let run_cerr := fun err s₁  => pure ⟨s₁, true,  .err err⟩
   let run_eok  := fun a s₁ _h => pure ⟨s₁, false, .ok a⟩
   let run_eerr := fun err s₁  => pure ⟨s₁, false, .err err⟩
   x.unParser (Reply S E A) s₀ run_cok run_cerr run_eok run_eerr
 
-def pMap (E S: Type) [Stream S] (M: Type -> Type) [Monad M] (U V: Type) (f: U -> V) (x: ParsecT E S M U) : ParsecT E S M V  :=
+def pPure [Stream S] [Monad M] (x: A): (ParsecT E S M A) :=
+  ParsecT.mk $ λ b s _ _ eok _ => eok x s []
+
+instance [Stream S] [Monad M]: Pure (ParsecT E S M) where
+  pure := pPure
+
+def pMap [Stream S] [Monad M] (f: U -> V) (x: ParsecT E S M U): ParsecT E S M V :=
   ParsecT.mk (λ (b s cok cerr eok eerr) => (x.unParser b s (cok ∘ f) cerr (eok ∘ f) eerr))
+
+instance [Stream S] [Monad M]: Functor (ParsecT E S M) where
+  map := pMap
+
+-- def pSeq [Stream S] [Monad M] (step: ParsecT E S M (U -> V)) (start: Unit -> ParsecT E S M U): ParsecT E S M V :=
+--   let cok₁ := sorry
+--   let eok₁ := sorry
+--   ParsecT.mk (λ b s cok cerr eok eerr => step.unParser b s cok₁ cerr eok₁ eerr)
 
 -- | Monads M that implement primitive parsers
 class MonadParsec (M: Type -> Type) [Monad M] [Alternative M] where
@@ -173,5 +188,39 @@ class MonadParsec (M: Type -> Type) [Monad M] [Alternative M] where
   getParserState: M (State S E)
   -- | Update parser state with @phi@.
   updateParserState (phi: (State S E -> State S E)): M Unit
+
+-- #eval (4 : Id Nat) + (4 : Nat)
+#eval (4 : Id Nat)
+#eval (4 : Nat)
+#eval (pure 4 : Id Nat)
+#eval ((pure 4 : Id Nat) : Nat)
+#check liftM
+
+-- instance: Monad (MonadParsec M) where
+
+-- instance: MonadLiftT (MonadParsec Mᵤ) Mᵥ where
+--   monadLift {α: Type} (???):
+
+instance [Monad M] [Alternative M] [mₚ: MonadParsec M]: MonadParsec (StateT σ M) where
+  E := mₚ.E
+  S := mₚ.S
+  stream := mₚ.stream
+  -- parseError a err := pure $ liftM a (mₚ.parseError a err)
+  parseError a err := sorry
+  label := sorry
+  attempt := sorry
+  lookAhead := sorry
+  notFollowedBy := sorry
+  withRecovery := sorry
+  observing := sorry
+  eof := sorry
+  token := sorry
+  tokens := sorry
+  takeWhileP := sorry
+  takeWhile1P := sorry
+  takeP := sorry
+  getParserState := sorry
+  updateParserState := sorry
+-- instance (W: Type -> Type) [Monoid W] (M: Type -> Type) [mₚ: MonadParsec M]: MonadParsec (RWST)
 
 end Megaparsec
