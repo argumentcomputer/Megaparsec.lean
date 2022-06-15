@@ -81,7 +81,7 @@ structure State (S E : Type) (s : Stream S) where
 
 abbrev Hints (T : Type) := List (ErrorItem T)
 
-inductive Result (S E A: Type) {s : Stream S} where
+inductive Result (S E A: Type) (s : Stream S) where
 | ok (x : A)
 | err (e : ParseError s)
 
@@ -98,24 +98,24 @@ inductive Surely (L: Type u) where
 | error (err : L)
 
 structure Reply (S E A: Type) {s : Stream S} where
-  state    : @State S E s
+  state    : State S E s
   consumed : Bool
-  result   : @Result S E A s
+  result   : Result S E A s
 
 structure ParsecT (E: Type) (stream: Stream S) (m: Monad M) (A: Type) where
   unParser :
-    (B : Type) → (@State S E stream) →
+    (B : Type) → (State S E stream) →
     -- Return A with State S E and Hints into M B
-    (A → @State S E stream → Hints (stream.Token) → M B) → -- Consumed-OK
+    (A → State S E stream → Hints (stream.Token) → M B) → -- Consumed-OK
     -- Report errors with State into M B
-    (ParseError stream → @State S E stream → M B) →        -- Consumed-Error
+    (ParseError stream → State S E stream → M B) →        -- Consumed-Error
     -- Return A with State S E and Hints into M B
-    (A → @State S E stream → Hints (stream.Token) → M B) → -- Empty-OK
+    (A → State S E stream → Hints (stream.Token) → M B) → -- Empty-OK
     -- Report errors with State into M B
-    (ParseError stream → @State S E stream → M B) →        -- Empty-Error
+    (ParseError stream → State S E stream → M B) →        -- Empty-Error
     M B
 
-def runParsecT (E: Type) [m: Monad M] (A: Type) (x: @ParsecT S M E s m A) (s₀: @State S E s): M (@Reply S E A s) :=
+def runParsecT (E: Type) [m: Monad M] (A: Type) (x: @ParsecT S M E s m A) (s₀: State S E s): M (@Reply S E A s) :=
   let run_cok  := fun a s₁ _h => pure ⟨s₁, true,  .ok a⟩
   let run_cerr := fun err s₁  => pure ⟨s₁, true,  .err err⟩
   let run_eok  := fun a s₁ _h => pure ⟨s₁, false, .ok a⟩
@@ -125,13 +125,13 @@ def runParsecT (E: Type) [m: Monad M] (A: Type) (x: @ParsecT S M E s m A) (s₀:
 def pPure [m: Monad M] (x: A): ParsecT E s m A :=
   ParsecT.mk $ fun b s _ _ eok _ => eok x s []
 
-instance [m: Monad M]: Pure (@ParsecT S M E s m) where
+instance [m: Monad M]: Pure (ParsecT E s m) where
   pure := pPure
 
 def pMap [m: Monad M] (f: U → V) (x: @ParsecT S M E s m U): @ParsecT S M E s m V :=
   ParsecT.mk (fun (b s cok cerr eok eerr) => (x.unParser b s (cok ∘ f) cerr (eok ∘ f) eerr))
 
-instance [m: Monad M]: Functor (@ParsecT S M E s m) where
+instance [m: Monad M]: Functor (ParsecT E s m) where
   map := pMap
 
 /-- Monad instance for ParsecT and related utilities -/
@@ -204,7 +204,7 @@ class MonadParsec (E S : Type) [Monad M] [Alternative M] (stream : Stream S) whe
   -- | Backtracks if there aren't enough tokens in a stream to be returned as a chunk. Otherwise, take the amount of tokens and return the chunk
   takeP (A: Type) (name: Maybe String) (n: Nat): M Tokens
   -- | Return current 'State' of the parser
-  getParserState: M (@State S E stream)
+  getParserState: M (State S E stream)
   -- | Update parser state with @phi@.
   updateParserState (phi: (State S E stream → State S E stream)): M Unit
 
