@@ -142,9 +142,9 @@ def accHints {M : Type u → Type v}
                -- | Hints to add
              (hs₁ : Hints T)
                -- | An “OK” continuation to alter
-             (c : A → State S E s' → Hints T → M B)
+             (c : A → State S E stream → Hints T → M B)
                 -- | Altered “OK” continuation
-             (x : A) (s : State S E s') (hs₂ : Hints T) : M B :=
+             (x : A) (s : State S E stream) (hs₂ : Hints T) : M B :=
   c x s (hs₁ ++ hs₂)
 
 -- withHints' hs c makes “error” continuation c use given hints hs.
@@ -262,13 +262,13 @@ def RWST (R W S : Type u) (M : Type u → Type v) (A : Type u) : Type (max u v) 
 
 instance mrwsₜ (R W S : Type) [m : Monoid W] [Monad M] : Monad (RWST R W S M) where
   map f x := fun r s => do {
-    let (a, s, w) <- x r s
+    let (a, s, w) ← x r s
     pure (f a, s, w)
   }
   pure x := fun _ s => pure (x,s,m.one)
   bind m k := fun r s => do {
-    let (a, s', w) <- m r s
-    let (b, s'', w') <- (k a) r s
+    let (a, s', w) ← m r s
+    let (b, s'', w') ← (k a) r s
     pure (b, s'', w * w') }
 
 instance arwsₜ [Monoid W] [Monad M] [mₐ : Alternative M] : Alternative (RWST R W S M) where
@@ -277,32 +277,32 @@ instance arwsₜ [Monoid W] [Monad M] [mₐ : Alternative M] : Alternative (RWST
 
 instance [Monad M] [m : Monoid W] : MonadLiftT M (RWST R W S M) where
   monadLift ma := fun _ s => do
-    let a <- ma
+    let a ← ma
     pure (a, s, m.one)
 
 -- MonadParsec instance for RWST
 
 instance {E S W : Type} [m : Monoid W]
-         [monad_inst : Monad M] [a : Alternative M] {s : Stream S}
-         [mₚ : @MonadParsec M E S monad_inst a s]
-         [MonadLiftT M (RWST R W S M)] : @MonadParsec (RWST R W S M) E S (@mrwsₜ M R W S m monad_inst) (@arwsₜ W M R S m monad_inst a) s where
+         [monad_inst : Monad M] [a : Alternative M] {stream : Stream S}
+         [mₚ : @MonadParsec M E S monad_inst a stream]
+         [MonadLiftT M (RWST R W S M)] : @MonadParsec (RWST R W S M) E S (@mrwsₜ M R W S m monad_inst) (@arwsₜ W M R S m monad_inst a) stream where
   parseError A err := liftM (mₚ.parseError A)
-  label A n m := fun r s' => mₚ.label E s (A × S × W) n (m r s')
-  attempt A st := fun r s' => mₚ.attempt E s (A × S × W) (st r s')
-  lookAhead A st := fun r s' => do
-    let (x,_,_) ← mₚ.lookAhead E s (A × S × W) (st r s')
-    pure (x,s',m.one)
-  notFollowedBy A state := fun r s' => do
-    mₚ.notFollowedBy E s Unit (void (state r s'))
-    pure (Unit.unit, s', m.one)
+  label A n m := fun r s => mₚ.label E stream (A × S × W) n (m r s)
+  attempt A st := fun r s => mₚ.attempt E stream (A × S × W) (st r s)
+  lookAhead A st := fun r s => do
+    let (x,_,_) ← mₚ.lookAhead E stream (A × S × W) (st r s)
+    pure (x, s, m.one)
+  notFollowedBy A state := fun r s => do
+    mₚ.notFollowedBy E stream Unit (void (state r s))
+    pure (Unit.unit, s, m.one)
   withRecovery A n m := fun r s => mₚ.withRecovery (A × S × W) (fun e => (n e) r s) (m r s)
   observing A m := fun r s => fixs' s <$> mₚ.observing (A × S × W) (m r s)
   eof := liftM mₚ.eof
   token A test mt := liftM (mₚ.token E A test mt)
-  tokens A e ts := liftM (mₚ.tokens E s A e ts)
-  takeWhileP A ms p := liftM (mₚ.takeWhileP E s A ms p)
-  takeWhile1P A ms p := liftM (mₚ.takeWhile1P E s A ms p)
-  takeP A l n := liftM (mₚ.takeP E s A l n)
+  tokens A e ts := liftM (mₚ.tokens E stream A e ts)
+  takeWhileP A ms p := liftM (mₚ.takeWhileP E stream A ms p)
+  takeWhile1P A ms p := liftM (mₚ.takeWhile1P E stream A ms p)
+  takeP A l n := liftM (mₚ.takeP E stream A l n)
   getParserState := liftM mₚ.getParserState
   updateParserState f := liftM (mₚ.updateParserState f)
 
