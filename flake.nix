@@ -46,6 +46,7 @@
 
         devShell = pkgs.mkShell {
           buildInputs = [
+            ## HLS doesn't work in VSCode, so why bother (for the time being)
             # pkgs.ghc
             # pkgs.cabal-install
             # pkgs.haskell-language-server
