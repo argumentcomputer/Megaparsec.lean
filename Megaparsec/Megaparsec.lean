@@ -27,20 +27,20 @@ inductive ErrorItem (T: Type) where
 | label (l: NonEmptyList Char)
 | eof
 
-def ord2beq (T: Type) [Ord T] (x y: T): Bool :=
+def ord2beq [Ord T] (x y: T): Bool :=
   compare x y == Ordering.eq
 
-def ord2beq_nel (T: Type) [Ord T] (x y: NonEmptyList T): Bool :=
+def ord2beq_nel [Ord T] (x y: NonEmptyList T): Bool :=
   match x, y with
-  | .cons u x₁, .cons v y₁ => ord2beq T u v && ord2beq_nel T x₁ y₁
-  | .nil u, .nil v => ord2beq T u v
+  | .cons u x₁, .cons v y₁ => ord2beq u v && ord2beq_nel x₁ y₁
+  | .nil u, .nil v => ord2beq u v
   | _, _ => false
 
 instance ord2beq_ei [Ord T]: BEq (ErrorItem T) where
   beq (u v: ErrorItem T) :=
     match u, v with
-    | .tokens nelᵤ, .tokens nelᵥ => ord2beq_nel T nelᵤ nelᵥ
-    | .label nelᵤ, .label nelᵥ => ord2beq_nel Char nelᵤ nelᵥ
+    | .tokens nelᵤ, .tokens nelᵥ => ord2beq_nel nelᵤ nelᵥ
+    | .label nelᵤ, .label nelᵥ => ord2beq_nel nelᵤ nelᵥ
     | .eof, .eof => true
     | _, _ => false
 
@@ -69,21 +69,21 @@ inductive ErrorFancy (E: Type) where
 | indent (ord: Ordering) (fromPos: Pos) (uptoPos: Pos)
 | custom (e: E)
 
-inductive ParseError (S E: Type) [Stream S] where
+inductive ParseError (E: Type) [Stream S] where
 | trivial (offset: Nat) (unexpected: ErrorItem (Stream.Token S)) (expected: List (ErrorItem (Stream.Token S)))
 | fancy (offset: Nat) (expected : List (ErrorFancy E))
 
-structure State (S E: Type) [Stream S] where
+structure State (S E: Type) [s: Stream S] where
   stateInput       : S
   stateOffset      : Nat
   statePosState    : PosState S
-  stateParseErrors : List (ParseError S E)
+  stateParseErrors : List (@ParseError S E s)
 
 abbrev Hints (T : Type) := List (ErrorItem T)
 
-inductive Result (S E A: Type) [Stream S] where
+inductive Result (S E A: Type) [s: Stream S] where
 | ok (x : A)
-| err (e : ParseError S E)
+| err (e : @ParseError S E s)
 
 inductive Either (L: Type u) (R: Type v) where
 | left (l : L)
@@ -102,79 +102,79 @@ structure Reply (S E A: Type) [Stream S] where
   consumed : Bool
   result   : Result S E A
 
-structure ParsecT (E S: Type) [stream: Stream S] (M: Type → Type) [Monad M] (A: Type) where
+structure ParsecT (E: Type) [stream: Stream S] [m: Monad M] (A: Type) where
   unParser :
     (B : Type) → (State S E) →
     -- Return A with State S E and Hints into M B
     (A → State S E → Hints (stream.Token) → M B) → -- Consumed-OK
     -- Report errors with State into M B
-    (ParseError S E → State S E → M B) →            -- Consumed-Error
+    (@ParseError S E stream → State S E → M B) →            -- Consumed-Error
     -- Return A with State S E and Hints into M B
     (A → State S E → Hints (stream.Token) → M B) → -- Empty-OK
     -- Report errors with State into M B
-    (ParseError S E → State S E → M B) →            -- Empty-Error
+    (@ParseError S E stream → State S E → M B) →            -- Empty-Error
     M B
 
-def runParsecT (E S: Type) [Stream S] (M: Type → Type) [Monad M] (A: Type) (x: ParsecT E S M A) (s₀: State S E): M (Reply S E A) :=
+def runParsecT (E: Type) [s: Stream S] [m: Monad M] (A: Type) (x: @ParsecT S M E s m A) (s₀: State S E): M (Reply S E A) :=
   let run_cok  := fun a s₁ _h => pure ⟨s₁, true,  .ok a⟩
   let run_cerr := fun err s₁  => pure ⟨s₁, true,  .err err⟩
   let run_eok  := fun a s₁ _h => pure ⟨s₁, false, .ok a⟩
   let run_eerr := fun err s₁  => pure ⟨s₁, false, .err err⟩
   x.unParser (Reply S E A) s₀ run_cok run_cerr run_eok run_eerr
 
-def pPure [Stream S] [Monad M] (x: A): (ParsecT E S M A) :=
+def pPure [s: Stream S] [m: Monad M] (x: A): @ParsecT S M E s m A :=
   ParsecT.mk $ fun b s _ _ eok _ => eok x s []
 
-instance [Stream S] [Monad M]: Pure (ParsecT E S M) where
+instance [s: Stream S] [m: Monad M]: Pure (@ParsecT S M E s m) where
   pure := pPure
 
-def pMap [Stream S] [Monad M] (f: U → V) (x: ParsecT E S M U): ParsecT E S M V :=
+def pMap [s: Stream S] [m: Monad M] (f: U → V) (x: @ParsecT S M E s m U): @ParsecT S M E s m V :=
   ParsecT.mk (fun (b s cok cerr eok eerr) => (x.unParser b s (cok ∘ f) cerr (eok ∘ f) eerr))
 
-instance [Stream S] [Monad M]: Functor (ParsecT E S M) where
+instance [s: Stream S] [m: Monad M]: Functor (@ParsecT S M E s m) where
   map := pMap
 
 /-- Monad instance for ParsecT and related utilities -/
 
 -- accHints' hs c results in “OK” continuation that will add given
 -- hints @hs@ to third argument of original continuation c
-def accHints [Stream S] {M : Type → Type}
+def accHints [Stream S] {M : Type u → Type v}
                -- | Hints to add
-             (hs₁ : Hints T) 
+             (hs₁ : Hints T)
                -- | An “OK” continuation to alter
              (c : A → State S E → Hints T → M B)
                 -- | Altered “OK” continuation
-             (x : A) (s : State S E) (hs₂ : Hints T) : M B := 
+             (x : A) (s : State S E) (hs₂ : Hints T) : M B :=
   c x s (hs₁ ++ hs₂)
 
 -- withHints' hs c makes “error” continuation c use given hints hs.
-def withHints [stream : Stream S] {M : Type → Type}
+def withHints [stream : Stream S] {M : Type u → Type v}
                 -- | Hints to use
               (ps' : Hints (stream.Token))
                 -- | Continuation to influence
-              (c : ParseError S E → State S E → M B)
+              (c : @ParseError S E stream → State S E → M B)
                 -- | First argument of resulting continuation
-              (e : ParseError S E) : State S E → M B :=
+              (e : @ParseError S E stream) : State S E → M B :=
   match e with
     | ParseError.trivial pos us ps => c $ ParseError.trivial pos us (ps ++ ps')
     | _ => c e
 
 
-def pBind [Stream S] [Monad M] (m : ParsecT E S M A) (k : A → ParsecT E S M B) : ParsecT E S M B := 
+def pBind [s: Stream S] [m: Monad M] (p : @ParsecT S M E s m A) (k : A → @ParsecT S M E s m B) : @ParsecT S M E s m B :=
   ParsecT.mk $ fun B s cok cerr eok eerr =>
     let mcok x s' hs := ParsecT.unParser (k x) B s' cok cerr (accHints hs cok) (withHints hs cerr)
     let meok x s' hs := ParsecT.unParser (k x) B s' cok cerr (accHints hs eok) (withHints hs eerr)
-    m.unParser B s mcok cerr meok eerr
+    p.unParser B s mcok cerr meok eerr
 
-instance  [Stream S] [Monad M] : Monad (ParsecT E S M) where
+instance  [s: Stream S] [m: Monad M] : Monad (@ParsecT S M E s m) where
   bind := pBind
 
 /-- MonadParsec class and their instances -/
 
 -- | Monads M that implement primitive parsers
-class MonadParsec (E S : Type) (M: Type → Type) [Monad M] [Alternative M] [stream : Stream S] where
+class MonadParsec (E S : Type) [Monad M] [Alternative M] [stream : Stream S] where
   -- | Stop parsing wherever we are, and report @err@
-  parseError (A: Type) (err: ParseError S E): M A
+  parseError (A: Type) (err: @ParseError S E stream): M A
   -- | If there's no input consumed by @parser@, labels expected token with name @name_override@
   label (A: Type) (name_override: String) (parser: M A): M A
   -- | Hides expected token error messages when @parser@ fails
@@ -188,9 +188,9 @@ class MonadParsec (E S : Type) (M: Type → Type) [Monad M] [Alternative M] [str
   -- | Succeeds if @parser@ fails without consuming or modifying parser state, useful for "longest match" rule implementaiton.
   notFollowedBy (A: Type) (parser: M A): M Unit
   -- | Uses @phi@ to recover from failure in @parser@.
-  withRecovery (A: Type) (phi: ParseError S E → M A) (parser: M A): M A
+  withRecovery (A: Type) (phi: @ParseError S E stream → M A) (parser: M A): M A
   -- | Observes 'ParseError's as they happen, without backtracking.
-  observing (A: Type) (parser: M A): M (@Either (ParseError S E) A)
+  observing (A: Type) (parser: M A): M (@Either (@ParseError S E stream) A)
   -- | The parser at the end of the Stream.
   eof: M Unit
   -- | Parser @'token' matcher expected@ accepts tokens for which @matcher@ returns '.just', accumulates '.noithing's into an 'Std.HashSet' for error reporting.
@@ -223,13 +223,18 @@ def updatePair {A B C : Type} (c : C) : A × B → A × C
   | ⟨ a, _ ⟩ => ⟨ a, c ⟩
 
 def fst {A B : Type} : A × B → A
-  | ⟨ a, _⟩ => a 
+  | ⟨ a, _⟩ => a
 
-def seqComp {A B : Type} {M : Type → Type} [Monad M] (ma : M A) (mb : M B) :=
+def seqComp {M : Type u → Type v} [Monad M] (ma : M A) (mb : M B) :=
   ma >>= fun _ => mb
 --
 
-instance (E S : Type) [Monad M] [Alternative M] [Stream S] [mₚ: MonadParsec E S M] : MonadParsec E S (StateT σ M) where
+def msₜ [m: Monad M]: Monad (StateT σ M) :=
+  StateT.instMonadStateT
+def asₜ [Monad A] [Alternative A]: Alternative (StateT σ A) :=
+  StateT.instAlternativeStateT
+
+instance (E S : Type) [m: Monad M] [a: Alternative M] [s: Stream S] [mₚ: @MonadParsec M E S m a s] : @MonadParsec (StateT σ M) E S (@msₜ M σ m) (@asₜ M σ m a) s where
   parseError A err := liftM (mₚ.parseError A err)
   label A f st := (mₚ.label E S (A × σ) f) ∘ st
   attempt A st := mₚ.attempt E S (A × σ) ∘ st
@@ -246,15 +251,15 @@ instance (E S : Type) [Monad M] [Alternative M] [Stream S] [mₚ: MonadParsec E 
   getParserState := liftM mₚ.getParserState
   updateParserState f := liftM (mₚ.updateParserState f)
 
--- | RWS monad and its transformer and 
+-- | RWS monad and its transformer and
 
-def void {A : Type} {M : Type → Type} [Monad M] (ma : M A) : M Unit :=
+def void [Monad M] (ma : M A) : M Unit :=
   (fun _ => Unit.unit) <$> ma
 
 def RWST (R W S : Type u) (M : Type u → Type v) (A : Type u) : Type (max u v) :=
   R → S → M (A × S × W)
 
-instance (R W S : Type) (M : Type → Type) [m : Monoid W]  [Monad M] : Monad (RWST R W S M) where
+instance mrwsₜ (R W S : Type) [m : Monoid W] [Monad M] : Monad (RWST R W S M) where
   map f x := fun r s => do {
     let (a, s, w) <- x r s
     pure (f a, s, w)
@@ -265,22 +270,21 @@ instance (R W S : Type) (M : Type → Type) [m : Monoid W]  [Monad M] : Monad (R
     let (b, s'', w') <- (k a) r s
     pure (b, s'', w * w') }
 
-instance (R W S : Type) (M : Type → Type) 
-         [Monoid W] [Monad M] [mₐ : Alternative M] : Alternative (RWST R W S M) where
+instance arwsₜ [Monoid W] [Monad M] [mₐ : Alternative M] : Alternative (RWST R W S M) where
   failure := fun _ _ => mₐ.failure
   orElse a b := fun r s => mₐ.orElse (a r s) (fun _ => b Unit.unit r s)
 
-instance (E S W : Type) (M : Type → Type) [Monad M] [m : Monoid W] : MonadLiftT M (RWST R W S M) where
+instance [Monad M] [m : Monoid W] : MonadLiftT M (RWST R W S M) where
   monadLift ma := fun _ s => do
     let a <- ma
     pure (a, s, m.one)
-    
+
 -- MonadParsec instance for RWST
 
-instance (E S W : Type) [m : Monoid W] (M : Type → Type)
-         [Monad M] [Alternative M] [Stream S]
-         [mₚ : MonadParsec E S M] 
-         [MonadLiftT M (RWST R W S M)] : MonadParsec E S (RWST R W S M) where
+instance (E S W : Type) [m : Monoid W]
+         [monad_inst : Monad M] [a : Alternative M] [s : Stream S]
+         [mₚ : @MonadParsec M E S monad_inst a s]
+         [MonadLiftT M (RWST R W S M)] : @MonadParsec (RWST R W S M) E S (@mrwsₜ M R W S m monad_inst) (@arwsₜ W M R S m monad_inst a) s where
   parseError A err := liftM (mₚ.parseError A err)
   label A n m := fun r s => mₚ.label E S (A × S × W) n (m r s)
   attempt A st := fun r s => mₚ.attempt E S (A × S × W) (st r s)
