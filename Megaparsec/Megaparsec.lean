@@ -4,6 +4,11 @@ import Mathlib.Algebra.Group.Defs -- for Monoid
 namespace Megaparsec
 
 /-- Util -/
+def option (b : B) (f : A → B) (oa : Option A) : B :=
+  match oa with
+    | Option.none => b
+    | Option.some x => f x
+
 inductive Either (L: Type u) (R: Type v) where
 | left (l : L)
 | right (r : R)
@@ -43,8 +48,16 @@ structure PosState (S: Type) where
 
 inductive NonEmptyList (A: Type) where
 | nil (x: A)
-| cons (x: A) (xs: NonEmptyList A)
+| cons (x: A) (xs: List A)
   deriving BEq
+
+def nes (a : A) : NonEmptyList A :=
+  NonEmptyList.cons a []
+
+def nonEmptyString (s : String) : Option (NonEmptyList Char) :=
+  match s with
+    | { data := [] } => Option.none
+    | { data := x :: xs} => Option.some $ NonEmptyList.cons x xs
 
 inductive ErrorItem (T: Type) where
 | tokens (t: NonEmptyList T)
@@ -56,13 +69,13 @@ abbrev Hints (T : Type) := List (List (ErrorItem T))
 def ord2beq [Ord T] (x y: T): Bool :=
   compare x y == Ordering.eq
 
-def ord2beq_nel [Ord T] (x y: NonEmptyList T): Bool :=
+def ord2beq_nel [Ord T] [BEq T] (x y: NonEmptyList T): Bool :=
   match x, y with
-  | .cons u x₁, .cons v y₁ => ord2beq u v && ord2beq_nel x₁ y₁
+  | .cons u x₁, .cons v y₁ => ord2beq u v && List.instBEqList.beq x₁ y₁
   | .nil u, .nil v => ord2beq u v
   | _, _ => false
 
-instance ord2beq_ei [Ord T]: BEq (ErrorItem T) where
+instance ord2beq_ei [Ord T] [BEq T] : BEq (ErrorItem T) where
   beq (u v: ErrorItem T) :=
     match u, v with
     | .tokens nelᵤ, .tokens nelᵥ => ord2beq_nel nelᵤ nelᵥ
@@ -70,7 +83,7 @@ instance ord2beq_ei [Ord T]: BEq (ErrorItem T) where
     | .eof, .eof => true
     | _, _ => false
 
-def errorItemMax [Ord T] (e₁ : ErrorItem T) (e₂ : ErrorItem T) : ErrorItem T :=
+def errorItemMax [Ord T] [BEq T] (e₁ : ErrorItem T) (e₂ : ErrorItem T) : ErrorItem T :=
   match ord2beq_ei.beq e₁ e₂ with
     | true => e₂
     | false => e₁
@@ -113,6 +126,7 @@ def errorOffset [s: Stream S] (e: @ParseError S E s) : ℕ :=
 
 def mergeError [s: Stream S]
                [Ord (Stream.Token S)]
+               [BEq (Stream.Token S)]
                (e₁: @ParseError S E s)
                (e₂: @ParseError S E s) : @ParseError S E s :=
   match (compare (@errorOffset S E s e₁) (@errorOffset S E s e₂)) with
@@ -137,6 +151,12 @@ def toHints [s : Stream S] (streamPos : ℕ) (e : @ParseError S E s) : Hints s.T
         if streamPos == errOffset
            then (if List.isEmpty ps then [] else [ps])
            else []
+
+def refreshLastHint (h : Hints T) (m : Option (ErrorItem T)) : Hints T :=
+  match (h,m) with
+    | ([], _h) => []
+    | (_ :: xs, Option.none) => xs
+    | (_ :: xs, Option.some y) => [y] :: xs
 
 structure State (S E: Type) [s: Stream S] where
   stateInput       : S
@@ -230,7 +250,7 @@ instance mprsₜ [s: Stream S] [m: Monad M] : Monad (@ParsecT S M E s m) where
 def pZero [s: Stream S] [m: Monad M] : @ParsecT S M E s m A :=
   ParsecT.mk $ fun _ s _ _ _ eerr => eerr (ParseError.trivial s.stateOffset Option.none []) s
 
-def pPlus [s: Stream S] [m: Monad M] [Ord (s.Token)]
+def pPlus [s: Stream S] [m: Monad M] [Ord (s.Token)] [BEq (Stream.Token S)]
           (p₁: @ParsecT S M E s m A) (p₂: @ParsecT S M E s m A) : @ParsecT S M E s m A :=
   ParsecT.mk $ fun B s cok cerr eok eerr =>
     let meer err ms := 
@@ -240,7 +260,7 @@ def pPlus [s: Stream S] [m: Monad M] [Ord (s.Token)]
         p₂.unParser B s cok ncerr neok neerr
     p₁.unParser B s cok cerr eok eerr
 
-instance [s: Stream S] [Ord (s.Token)] [m: Monad M] : Alternative (@ParsecT S M E s m) where
+instance altpₜ [s: Stream S] [Ord (s.Token)] [BEq (s.Token)] [m: Monad M] : Alternative (@ParsecT S M E s m) where
   failure := pZero
   orElse p₁ p₂ := pPlus p₁ (p₂ Unit.unit)
 
@@ -269,7 +289,9 @@ class MonadParsec (E S : Type) [Monad M] [Alternative M] [stream : Stream S] whe
   -- | The parser at the end of the Stream.
   eof: M Unit
   -- | Parser @'token' matcher expected@ accepts tokens for which @matcher@ returns '.just', accumulates '.noithing's into an 'Std.HashSet' for error reporting.
-  token (A: Type) (matcher: Token → Option A) (acc: @Std.HashSet (ErrorItem stream.Token) stream.beqEi stream.hashEi): M A
+  -- token (A: Type) (matcher: Token → Option A) (acc: @Std.HashSet (ErrorItem stream.Token) stream.beqEi stream.hashEi): M A
+  -- TODO: enable the token method as above ^
+  token (A: Type) (matcher: Token → Option A) (acc: List (ErrorItem stream.Token)): M A
   -- | Parser @'tokens' matcher chunk@ parses a chunk in a stream by comparing against @matcher@, backtracking on fail. For example: `tokens (==) "xyz"` would parse (Tokens "xyz") out of "xyzzy", leaving "zy" unparsed.
   tokens (A: Type) (matcher: Tokens → Tokens → Bool) (chunk: Tokens): M Tokens
   -- | Never fails to parse zero or more individual tokens based on a predicate. `takeWhileP (Just "name") predicate` is equivalent to `many (satisfy predicate <?> "name")`.
@@ -287,6 +309,98 @@ def msₜ [m: Monad M]: Monad (StateT σ M) :=
   StateT.instMonadStateT
 def asₜ [Monad A] [Alternative A]: Alternative (StateT σ A) :=
   StateT.instAlternativeStateT
+
+/-- MonadParsec instance for ParsecT -/
+
+def pLabel [stream : Stream S] (A : Type) (l : String) (p : @ParsecT S M E stream m A) : @ParsecT S M E stream m A :=
+  ParsecT.mk $ fun B s cok cerr eok eerr =>
+      let el := Option.map (@ErrorItem.label stream.Token) (nonEmptyString l)
+      let cok' x s' hs :=
+        match el with
+          | Option.none => cok x s' (refreshLastHint hs Option.none)
+          | Option.some _ => cok x s' hs
+      let eok' x s' hs := eok x s' (refreshLastHint hs el)
+      let eerr' err := eerr $
+         match err with
+          | ParseError.trivial pos us _ => ParseError.trivial pos us (option [] (fun x => [x]) el)
+          | _ => err 
+      p.unParser B s cok' cerr eok' eerr'
+
+def pNotFollowedBy [stream : Stream S] (A : Type) (p : @ParsecT S M E stream m A) : @ParsecT S M E stream m Unit :=
+  ParsecT.mk $ fun B s _ _ eok eerr =>
+    let input := s.stateInput
+    let o := s.stateOffset
+    let what := option ErrorItem.eof (ErrorItem.tokens ∘ nes ∘ fst) (stream.take1 input)
+    let unexpect u := @ParseError.trivial S E stream o (Option.some u) []
+    let cok' _ _ _ := eerr (unexpect what) s
+    let cerr' _ _ := eok Unit.unit s []
+    let eok' _ _ _ := eerr (unexpect what) s
+    let eerr' _ _ := eok Unit.unit s []
+    p.unParser B s cok' cerr' eok' eerr'
+
+def pWithRecovery [stream : Stream S] (A : Type) (r : @ParseError S E stream → @ParsecT S M E stream m A) (p : @ParsecT S M E stream m A) :=
+  ParsecT.mk $ fun B s cok cerr eok eerr => 
+    let mcerr err ms :=
+        let rcok x s' _ := cok x s' []
+        let rcerr _ _ := cerr err ms
+        let reok x s' _ := eok x s' (toHints s'.stateOffset err)
+        let reerr _ _ := cerr err ms
+        let p₁ := r err
+        p₁.unParser B ms rcok rcerr reok reerr
+    let meerr err ms :=
+        let rcok x s' _ := cok x s' (toHints s'.stateOffset err)
+        let rcerr _ _ := eerr err ms
+        let reok x s' _ := eok x s' (toHints s'.stateOffset err)
+        let reerr _ _ := eerr err ms
+        let p₁ := r err
+        p₁.unParser B ms rcok rcerr reok reerr
+    p.unParser B s cok mcerr eok meerr
+
+def pEof [stream : Stream S] : @ParsecT S M E stream m Unit :=
+  ParsecT.mk $ fun _ s _ _ eok eerr =>
+    let input := s.stateInput
+    let o := s.stateOffset
+    let pst := s.statePosState
+    let de := s.stateParseErrors
+    match stream.take1 input with
+      | Option.none => eok Unit.unit s []
+      | Option.some (x,_) =>
+          let us := (Option.some ∘ ErrorItem.tokens ∘ nes) x
+          let ps := [ ErrorItem.eof ]
+          eerr (ParseError.trivial o us ps) (State.mk input o pst de)
+
+instance (E S : Type) [m : Monad M] [stream : Stream S] 
+         [o : Ord stream.Token] [e : BEq stream.Token] : @MonadParsec (@ParsecT S M E stream m) E S (@mprsₜ S M E stream m) (@altpₜ S M E stream o e m) stream where
+  parseError _ err := ParsecT.mk $ fun _ s _ _ _ eerr => eerr err s
+  label := pLabel
+  attempt _ p := 
+    ParsecT.mk $ fun B s cok _ eok eerr =>
+      let eerr' err _ := eerr err s
+      p.unParser B s cok eerr' eok eerr'
+  lookAhead _ p :=
+    ParsecT.mk $ fun B s _ cerr eok eerr =>
+      let eok' a _ _ := eok a s []
+      p.unParser B s eok' cerr eok' eerr
+  notFollowedBy := pNotFollowedBy
+  withRecovery := pWithRecovery
+  observing _ p := ParsecT.mk $ fun B s cok _ eok _ =>
+    let cerr' err s' := cok (Either.left err) s' []
+    let eerr' err s' := eok (Either.left err) s' (toHints s'.stateOffset err)
+    p.unParser B s (cok ∘ Either.right) cerr' (eok ∘ Either.right) eerr'
+  eof := pEof
+  token A test ps := ParsecT.mk $ fun B s cok _ _ eerr =>
+    let input := s.stateInput
+    let o := s.stateOffset
+    let pst := s.statePosState
+    let de := s.stateParseErrors
+    match stream.take1 input with
+      | Option.none => eerr (ParseError.trivial o (Option.some ErrorItem.eof) ps) s
+      | Option.some (c, cs) => match test c with
+        | Option.none => 
+            let us := (Option.some ∘ ErrorItem.tokens ∘ nes) c
+            eerr (ParseError.trivial o us ps) s
+        | Option.some x => cok x (State.mk cs (o + 1) pst de) []
+    sorry
 
 instance (E S : Type) [m: Monad M] [a: Alternative M] 
          [s: Stream S] [mₚ: @MonadParsec M E S m a s] : @MonadParsec (StateT σ M) E S (@msₜ M σ m) (@asₜ M σ m a) s where
