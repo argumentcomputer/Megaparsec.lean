@@ -99,10 +99,13 @@ class Stream (S : Type) where
   tokenToChunk : Token → Tokens
   tokensToChunk : List Token → Tokens
   chunkToTokens : Tokens → List Token
-  chunkEmpty : Tokens → Bool
+  chunkLength : Tokens → Nat
   take1 : S → Option (Token × S)
-  taknN : Nat → S → Option (Token × S)
+  takeN : Nat → S → Option (Tokens × S)
   takeWhile : (Token → Bool) → S → (Tokens × S)
+
+def chunkEmpty [stream : Stream S] (s : stream.Tokens) : Bool :=
+  stream.chunkLength s <= 0
 
 -- Convention, S is state, E is Error, T is token, A is return type.
 -- Convention for optimising currying is to apply E, S then M, and leave A for the last type argument.
@@ -401,12 +404,58 @@ instance (E S : Type) [m : Monad M] [stream : Stream S]
             let us := (.some ∘ .tokens ∘ nes) c
             eerr (.trivial o us ps) s
         | .some x => cok x (State.mk cs (o + 1) pst de) []
-  tokens (impl: False) := sorry
-  takeWhileP (impl: False) := sorry
-  takeWhile1P (impl: False) := sorry
-  takeP (impl: False) := sorry
-  getParserState (impl: False) := sorry
-  updateParserState (impl: False) := sorry
+  tokens A := sorry
+  takeWhileP _ ml f := 
+    ParsecT.mk $ fun _ s cok _ eok _ =>
+      let input := s.stateInput
+      let o := s.stateOffset
+      let pst := s.statePosState
+      let de := s.stateParseErrors
+      let (ts, input') := stream.takeWhile f input
+      let len := stream.chunkLength ts
+      let hs := match ml >>= nonEmptyString with
+                  | Option.none => []
+                  | Option.some l => [[ErrorItem.label l]]
+      if chunkEmpty ts
+        then eok ts (State.mk input' (o + len) pst de) hs
+        else cok ts (State.mk input' (o + len) pst de) hs
+  takeWhile1P _ ml f := ParsecT.mk $ fun _ s cok _ _ eerr =>
+      let input := s.stateInput
+      let o := s.stateOffset
+      let pst := s.statePosState
+      let de := s.stateParseErrors
+      let (ts, input') := stream.takeWhile f input
+      let len := stream.chunkLength ts
+      let el := ErrorItem.label <$> (ml >>= nonEmptyString)
+      let hs := match el with
+                  | Option.none => []
+                  | Option.some l => [[l]]
+      if chunkEmpty ts
+        then
+          let us := Option.some $
+             match stream.take1 input with
+               | Option.none => ErrorItem.eof
+               | Option.some (t,_) => ErrorItem.tokens (nes t)
+          let ps := option [] (fun x => [x]) el
+          eerr (ParseError.trivial o us ps) (State.mk input o pst de)
+        else cok ts (State.mk input' (o + len) pst de) hs
+  takeP _ ml n := ParsecT.mk $ fun _ s cok _ _ eerr =>
+      let input := s.stateInput
+      let o := s.stateOffset
+      let pst := s.statePosState
+      let de := s.stateParseErrors
+      -- let len := stream.chunkLength ts
+      let el := ErrorItem.label <$> (ml >>= nonEmptyString)
+      let ps := option [] (fun x => [x]) el
+      match stream.takeN n input with
+        | Option.none => eerr (ParseError.trivial o (pure ErrorItem.eof) ps) s
+        | Option.some (ts, input') =>
+            let len := stream.chunkLength ts
+            if not (len == n)
+            then eerr (ParseError.trivial (o + len) (pure ErrorItem.eof) ps) (State.mk input o pst de)
+            else cok ts (State.mk input' (o + len) pst de) []
+  getParserState := ParsecT.mk $ fun _ s _ _ eok _ => eok s s []
+  updateParserState f := ParsecT.mk $ fun _ s _ _ eok _ => eok Unit.unit (f s) []
 
 instance (E S : Type) [m: Monad M] [a: Alternative M]
          [s: Stream S] [mₚ: @MonadParsec M E S m a s] :
@@ -420,10 +469,10 @@ instance (E S : Type) [m: Monad M] [a: Alternative M]
   observing A f x := fixs x <$> (mₚ.observing (A × σ) (f x))
   eof := liftM mₚ.eof
   token A test mt := liftM (mₚ.token E A test mt)
-  tokens A e ts := liftM (mₚ.tokens E S A e ts)
-  takeWhileP A ms p := liftM (mₚ.takeWhileP E S A ms p)
-  takeWhile1P A ms p := liftM (mₚ.takeWhile1P E S A ms p)
-  takeP A l n := liftM (mₚ.takeP E S A l n)
+  tokens A e ts := liftM (mₚ.tokens E S e ts)
+  takeWhileP A ms p := liftM (mₚ.takeWhileP E S ms p)
+  takeWhile1P A ms p := liftM (mₚ.takeWhile1P E S ms p)
+  takeP A l n := liftM (mₚ.takeP E S l n)
   getParserState := liftM mₚ.getParserState
   updateParserState f := liftM (mₚ.updateParserState f)
 
@@ -474,10 +523,10 @@ instance (E S W : Type) [m : Monoid W]
   observing A m := fun r s => fixs' s <$> mₚ.observing (A × S × W) (m r s)
   eof := liftM mₚ.eof
   token A test mt := liftM (mₚ.token E A test mt)
-  tokens A e ts := liftM (mₚ.tokens E S A e ts)
-  takeWhileP A ms p := liftM (mₚ.takeWhileP E S A ms p)
-  takeWhile1P A ms p := liftM (mₚ.takeWhile1P E S A ms p)
-  takeP A l n := liftM (mₚ.takeP E S A l n)
+  tokens A e ts := liftM (mₚ.tokens E S e ts)
+  takeWhileP A ms p := liftM (mₚ.takeWhileP E S ms p)
+  takeWhile1P A ms p := liftM (mₚ.takeWhile1P E S ms p)
+  takeP A l n := liftM (mₚ.takeP E S l n)
   getParserState := liftM mₚ.getParserState
   updateParserState f := liftM (mₚ.updateParserState f)
 
