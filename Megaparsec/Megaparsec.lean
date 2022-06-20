@@ -118,8 +118,9 @@ inductive ErrorFancy (E: Type) where
 
 inductive ParseError (E: Type) [stream: Stream S] where
 | trivial (offset: Nat)
-          (unexpected: Option (ErrorItem (Stream.Token S)))
-          (expected: List (ErrorItem (Stream.Token S)))
+          (unexpected: Option (ErrorItem (stream.Token)))
+          -- TODO: Switch to HashSet
+          (expected: List (ErrorItem (stream.Token)))
 | fancy (offset: Nat) (expected: List (ErrorFancy E))
 
 def errorOffset [s: Stream S] (e: @ParseError S E s) : ℕ :=
@@ -270,9 +271,9 @@ instance altpₜ [s: Stream S] [Ord (s.Token)] [BEq (s.Token)] [m: Monad M] : Al
 /-- MonadParsec class and their instances -/
 
 -- | Monads M that implement primitive parsers
-class MonadParsec (E S : Type) [Monad M] [Alternative M] [stream : Stream S] where
+class MonadParsec (E S : Type) [Monad M] [Alternative M] [strm : Stream S] where
   -- | Stop parsing wherever we are, and report @err@
-  parseError (A: Type) (err: @ParseError S E stream): M A
+  parseError (A: Type) (err: @ParseError S E strm): M A
   -- | If there's no input consumed by @parser@, labels expected token with name @name_override@
   label (A: Type) (name_override: String) (parser: M A): M A
   -- | Hides expected token error messages when @parser@ fails
@@ -286,23 +287,24 @@ class MonadParsec (E S : Type) [Monad M] [Alternative M] [stream : Stream S] whe
   -- | Succeeds if @parser@ fails without consuming or modifying parser state, useful for "longest match" rule implementaiton.
   notFollowedBy (A: Type) (parser: M A): M Unit
   -- | Uses @phi@ to recover from failure in @parser@.
-  withRecovery (A: Type) (phi: @ParseError S E stream → M A) (parser: M A): M A
+  withRecovery (A: Type) (phi: @ParseError S E strm → M A) (parser: M A): M A
   -- | Observes 'ParseError's as they happen, without backtracking.
-  observing (A: Type) (parser: M A): M (@Either (@ParseError S E stream) A)
-  -- | The parser at the end of the Stream.
+  observing (A: Type) (parser: M A): M (@Either (@ParseError S E strm) A)
+  -- | The parser at the end of the stream.
   eof: M Unit
   -- | Parser @'token' matcher expected@ accepts tokens for which @matcher@ returns '.just', accumulates '.noithing's into an 'Std.HashSet' for error reporting.
-  -- token (A: Type) (matcher: Token → Option A) (acc: @Std.HashSet (ErrorItem stream.Token) stream.beqEi stream.hashEi): M A
+  -- token (A: Type) (matcher: Token → Option A) (acc: @Std.HashSet (ErrorItem strm.Token) strm.beqEi strm.hashEi): M A
   -- TODO: enable the token method as above ^
-  token (A: Type) (matcher: stream.Token → Option A) (acc: List (ErrorItem stream.Token)): M A
+  token (A: Type) (matcher: strm.Token → Option A) (acc: List (ErrorItem strm.Token)): M A
   -- | Parser @'tokens' matcher chunk@ parses a chunk in a stream by comparing against @matcher@, backtracking on fail. For example: `tokens (==) "xyz"` would parse (Tokens "xyz") out of "xyzzy", leaving "zy" unparsed.
-  tokens (A: Type) (matcher: stream.Tokens → Tokens → Bool) (chunk: Tokens): M stream.Tokens
+  -- NB! Empty target chunk always succeeds.
+  tokens (A: Type) (matcher: strm.Tokens → strm.Tokens → Bool) (chunk: strm.Tokens): M strm.Tokens
   -- | Never fails to parse zero or more individual tokens based on a predicate. `takeWhileP (Just "name") predicate` is equivalent to `many (satisfy predicate <?> "name")`.
-  takeWhileP (A: Type) (name: Option String) (predicate: stream.Token → Bool): M stream.Tokens
+  takeWhileP (A: Type) (name: Option String) (predicate: strm.Token → Bool): M strm.Tokens
   -- | takeWhileP variant that fails if there were zero matches
-  takeWhile1P (A: Type) (name: Option String) (predicate: stream.Token → Bool): M stream.Tokens
+  takeWhile1P (A: Type) (name: Option String) (predicate: strm.Token → Bool): M strm.Tokens
   -- | Backtracks if there aren't enough tokens in a stream to be returned as a chunk. Otherwise, take the amount of tokens and return the chunk
-  takeP (A: Type) (name: Option String) (n: Nat): M stream.Tokens
+  takeP (A: Type) (name: Option String) (n: Nat): M strm.Tokens
   -- | Return current 'State' of the parser
   getParserState: M (State S E)
   -- | Update parser state with @phi@.
@@ -404,8 +406,33 @@ instance (E S : Type) [m : Monad M] [stream : Stream S]
             let us := (.some ∘ .tokens ∘ nes) c
             eerr (.trivial o us ps) s
         | .some x => cok x (State.mk cs (o + 1) pst de) []
-  tokens A := sorry
-  takeWhileP _ ml f := 
+  tokens A matcher chunk := ParsecT.mk $ fun B s₀ cok _ eok eerr =>
+    let unexpect pos' u :=
+      let us := pure u
+      -- let ps := [ (@ErrorItem.tokens stream.Token chunk) ]
+      let es := match stream.chunkToTokens chunk with
+        | List.cons x xs => [ErrorItem.tokens $ NonEmptyList.cons x xs]
+        | [] => [ErrorItem.label $ NonEmptyList.cons 'e' ['m', 'p', 't', 'y', ' ', 't', 'a', 'r', 'g', 'e', 't', ' ', 'c', 'h', 'u', 'n', 'k']]
+        -- ^ This should never happen, because an empty target always succeeds by design
+      ParseError.trivial pos' us es
+    let len := stream.chunkLength chunk
+    -- TODO: can we trick type system into using takeN from one `stream` with `stateInput` being another?
+    match stream.takeN len s₀.stateInput with
+      | .none => eerr (unexpect s₀.stateOffset ErrorItem.eof) s₀
+      | .some (consumed, rest) =>
+        if matcher chunk consumed then
+          let s₁ := State.mk rest (s₀.stateOffset + len) s₀.statePosState s₀.stateParseErrors
+          if chunkEmpty chunk then
+            eok consumed s₁ []
+          else
+            cok consumed s₁ []
+        else
+          let oops := match stream.chunkToTokens consumed with
+          | List.cons x xs => ErrorItem.tokens $ NonEmptyList.cons x xs
+          | [] => ErrorItem.label $ NonEmptyList.cons 'e' ['m', 'p', 't', 'y', ' ', 'c', 'o', 'n', 's', 'u', 'm', 'e', 'd', ' ', 'c', 'h', 'u', 'n', 'k']
+          -- ^ This should never happen, because we handle chunkEmpty earlier on
+          eerr (unexpect s₀.stateOffset oops) (State.mk s₀.stateInput s₀.stateOffset s₀.statePosState s₀.stateParseErrors)
+  takeWhileP _ ml f :=
     ParsecT.mk $ fun _ s cok _ eok _ =>
       let input := s.stateInput
       let o := s.stateOffset
@@ -433,9 +460,9 @@ instance (E S : Type) [m : Monad M] [stream : Stream S]
       if chunkEmpty ts
         then
           let us := Option.some $
-             match stream.take1 input with
-               | Option.none => ErrorItem.eof
-               | Option.some (t,_) => ErrorItem.tokens (nes t)
+            match stream.take1 input with
+              | Option.none => ErrorItem.eof
+              | Option.some (t,_) => ErrorItem.tokens (nes t)
           let ps := option [] (fun x => [x]) el
           eerr (ParseError.trivial o us ps) (State.mk input o pst de)
         else cok ts (State.mk input' (o + len) pst de) hs
