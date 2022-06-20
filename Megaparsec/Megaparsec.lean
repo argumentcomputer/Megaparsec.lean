@@ -114,8 +114,8 @@ inductive ErrorFancy (E: Type) where
 | custom (e: E)
 
 inductive ParseError (E: Type) [stream: Stream S] where
-| trivial (offset: Nat) 
-          (unexpected: Option (ErrorItem (Stream.Token S))) 
+| trivial (offset: Nat)
+          (unexpected: Option (ErrorItem (Stream.Token S)))
           (expected: List (ErrorItem (Stream.Token S)))
 | fancy (offset: Nat) (expected: List (ErrorFancy E))
 
@@ -131,7 +131,7 @@ def mergeError [s: Stream S]
                (e₂: @ParseError S E s) : @ParseError S E s :=
   match (compare (@errorOffset S E s e₁) (@errorOffset S E s e₂)) with
     | Ordering.lt => e₂
-    | Ordering.eq => 
+    | Ordering.eq =>
         match (e₁, e₂) with
           | (ParseError.trivial s₁ u₁ p₁, ParseError.trivial _ u₂ p₂) =>
              match (u₁, u₂) with
@@ -144,7 +144,7 @@ def mergeError [s: Stream S]
           | (ParseError.fancy s₁ x₁, ParseError.fancy _ x₂) => ParseError.fancy s₁ (x₁ ++ x₂)
     | Ordering.gt => e₁
 
-def toHints [s : Stream S] (streamPos : ℕ) (e : @ParseError S E s) : Hints s.Token := 
+def toHints [s : Stream S] (streamPos : ℕ) (e : @ParseError S E s) : Hints s.Token :=
   match e with
     | ParseError.fancy _ _ => []
     | ParseError.trivial errOffset _ ps =>
@@ -183,13 +183,13 @@ structure ParsecT (E: Type) [stream: Stream S] [m: Monad M] (A: Type) where
   unParser :
     (B : Type) → (State S E) →
     -- Return A with State S E and Hints into M B
-    (A → State S E → Hints (stream.Token) → M B) → -- Consumed-OK
+    (A → State S E → Hints (stream.Token) → M B) →    -- Consumed-OK
     -- Report errors with State into M B
-    (@ParseError S E stream → State S E → M B) →            -- Consumed-Error
+    (@ParseError S E stream → State S E → M B) →      -- Consumed-Error
     -- Return A with State S E and Hints into M B
-    (A → State S E → Hints (stream.Token) → M B) → -- Empty-OK
+    (A → State S E → Hints (stream.Token) → M B) →    -- Empty-OK
     -- Report errors with State into M B
-    (@ParseError S E stream → State S E → M B) →            -- Empty-Error
+    (@ParseError S E stream → State S E → M B) →      -- Empty-Error
     M B
 
 def runParsecT (E: Type) [s: Stream S] [m: Monad M] (A: Type) (x: @ParsecT S M E s m A) (s₀: State S E): M (Reply S E A) :=
@@ -253,7 +253,7 @@ def pZero [s: Stream S] [m: Monad M] : @ParsecT S M E s m A :=
 def pPlus [s: Stream S] [m: Monad M] [Ord (s.Token)] [BEq (Stream.Token S)]
           (p₁: @ParsecT S M E s m A) (p₂: @ParsecT S M E s m A) : @ParsecT S M E s m A :=
   ParsecT.mk $ fun B s cok cerr eok eerr =>
-    let meer err ms := 
+    let meer err ms :=
         let ncerr err' s' := cerr (mergeError err' err) (longestMatch ms s')
         let neok x s' hs := eok x s' (toHints s'.stateOffset err ++ hs)
         let neerr err' s' := eerr (mergeError err' err) (longestMatch ms s')
@@ -291,15 +291,15 @@ class MonadParsec (E S : Type) [Monad M] [Alternative M] [stream : Stream S] whe
   -- | Parser @'token' matcher expected@ accepts tokens for which @matcher@ returns '.just', accumulates '.noithing's into an 'Std.HashSet' for error reporting.
   -- token (A: Type) (matcher: Token → Option A) (acc: @Std.HashSet (ErrorItem stream.Token) stream.beqEi stream.hashEi): M A
   -- TODO: enable the token method as above ^
-  token (A: Type) (matcher: Token → Option A) (acc: List (ErrorItem stream.Token)): M A
+  token (A: Type) (matcher: stream.Token → Option A) (acc: List (ErrorItem stream.Token)): M A
   -- | Parser @'tokens' matcher chunk@ parses a chunk in a stream by comparing against @matcher@, backtracking on fail. For example: `tokens (==) "xyz"` would parse (Tokens "xyz") out of "xyzzy", leaving "zy" unparsed.
-  tokens (A: Type) (matcher: Tokens → Tokens → Bool) (chunk: Tokens): M Tokens
+  tokens (A: Type) (matcher: stream.Tokens → Tokens → Bool) (chunk: Tokens): M stream.Tokens
   -- | Never fails to parse zero or more individual tokens based on a predicate. `takeWhileP (Just "name") predicate` is equivalent to `many (satisfy predicate <?> "name")`.
-  takeWhileP (A: Type) (name: Option String) (predicate: Token → Bool): M Tokens
+  takeWhileP (A: Type) (name: Option String) (predicate: stream.Token → Bool): M stream.Tokens
   -- | takeWhileP variant that fails if there were zero matches
-  takeWhile1P (A: Type) (name: Option String) (predicate: Token → Bool): M Tokens
+  takeWhile1P (A: Type) (name: Option String) (predicate: stream.Token → Bool): M stream.Tokens
   -- | Backtracks if there aren't enough tokens in a stream to be returned as a chunk. Otherwise, take the amount of tokens and return the chunk
-  takeP (A: Type) (name: Option String) (n: Nat): M Tokens
+  takeP (A: Type) (name: Option String) (n: Nat): M stream.Tokens
   -- | Return current 'State' of the parser
   getParserState: M (State S E)
   -- | Update parser state with @phi@.
@@ -323,7 +323,7 @@ def pLabel [stream : Stream S] (A : Type) (l : String) (p : @ParsecT S M E strea
       let eerr' err := eerr $
          match err with
           | ParseError.trivial pos us _ => ParseError.trivial pos us (option [] (fun x => [x]) el)
-          | _ => err 
+          | _ => err
       p.unParser B s cok' cerr eok' eerr'
 
 def pNotFollowedBy [stream : Stream S] (A : Type) (p : @ParsecT S M E stream m A) : @ParsecT S M E stream m Unit :=
@@ -339,7 +339,7 @@ def pNotFollowedBy [stream : Stream S] (A : Type) (p : @ParsecT S M E stream m A
     p.unParser B s cok' cerr' eok' eerr'
 
 def pWithRecovery [stream : Stream S] (A : Type) (r : @ParseError S E stream → @ParsecT S M E stream m A) (p : @ParsecT S M E stream m A) :=
-  ParsecT.mk $ fun B s cok cerr eok eerr => 
+  ParsecT.mk $ fun B s cok cerr eok eerr =>
     let mcerr err ms :=
         let rcok x s' _ := cok x s' []
         let rcerr _ _ := cerr err ms
@@ -369,11 +369,12 @@ def pEof [stream : Stream S] : @ParsecT S M E stream m Unit :=
           let ps := [ ErrorItem.eof ]
           eerr (ParseError.trivial o us ps) (State.mk input o pst de)
 
-instance (E S : Type) [m : Monad M] [stream : Stream S] 
-         [o : Ord stream.Token] [e : BEq stream.Token] : @MonadParsec (@ParsecT S M E stream m) E S (@mprsₜ S M E stream m) (@altpₜ S M E stream o e m) stream where
+instance (E S : Type) [m : Monad M] [stream : Stream S]
+         [o : Ord stream.Token] [e : BEq stream.Token] :
+         @MonadParsec (@ParsecT S M E stream m) E S (@mprsₜ S M E stream m) (@altpₜ S M E stream o e m) stream where
   parseError _ err := ParsecT.mk $ fun _ s _ _ _ eerr => eerr err s
   label := pLabel
-  attempt _ p := 
+  attempt _ p :=
     ParsecT.mk $ fun B s cok _ eok eerr =>
       let eerr' err _ := eerr err s
       p.unParser B s cok eerr' eok eerr'
@@ -388,22 +389,28 @@ instance (E S : Type) [m : Monad M] [stream : Stream S]
     let eerr' err s' := eok (Either.left err) s' (toHints s'.stateOffset err)
     p.unParser B s (cok ∘ Either.right) cerr' (eok ∘ Either.right) eerr'
   eof := pEof
-  token A test ps := ParsecT.mk $ fun B s cok _ _ eerr =>
+  token A matcher ps := ParsecT.mk $ fun B s cok _ _ eerr =>
     let input := s.stateInput
     let o := s.stateOffset
     let pst := s.statePosState
     let de := s.stateParseErrors
     match stream.take1 input with
-      | Option.none => eerr (ParseError.trivial o (Option.some ErrorItem.eof) ps) s
-      | Option.some (c, cs) => match test c with
-        | Option.none => 
-            let us := (Option.some ∘ ErrorItem.tokens ∘ nes) c
-            eerr (ParseError.trivial o us ps) s
-        | Option.some x => cok x (State.mk cs (o + 1) pst de) []
-    sorry
+      | .none => eerr (.trivial o (.some .eof) ps) s
+      | .some (c, cs) => match matcher c with
+        | .none =>
+            let us := (.some ∘ .tokens ∘ nes) c
+            eerr (.trivial o us ps) s
+        | .some x => cok x (State.mk cs (o + 1) pst de) []
+  tokens (impl: False) := sorry
+  takeWhileP (impl: False) := sorry
+  takeWhile1P (impl: False) := sorry
+  takeP (impl: False) := sorry
+  getParserState (impl: False) := sorry
+  updateParserState (impl: False) := sorry
 
-instance (E S : Type) [m: Monad M] [a: Alternative M] 
-         [s: Stream S] [mₚ: @MonadParsec M E S m a s] : @MonadParsec (StateT σ M) E S (@msₜ M σ m) (@asₜ M σ m a) s where
+instance (E S : Type) [m: Monad M] [a: Alternative M]
+         [s: Stream S] [mₚ: @MonadParsec M E S m a s] :
+         @MonadParsec (StateT σ M) E S (@msₜ M σ m) (@asₜ M σ m a) s where
   parseError A err := liftM (mₚ.parseError A err)
   label A f st := (mₚ.label E S (A × σ) f) ∘ st
   attempt A st := mₚ.attempt E S (A × σ) ∘ st
