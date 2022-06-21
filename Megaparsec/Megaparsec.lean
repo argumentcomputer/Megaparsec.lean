@@ -64,15 +64,21 @@ inductive ErrorItem (T: Type) where
 | label (l: NonEmptyList Char)
 | eof
 
+#check BEq.beq
+
 abbrev Hints (T : Type) := List (List (ErrorItem T))
 
-def ord2beq [Ord T] (x y: T): Bool :=
+instance ord2beq [Ord T] : BEq T where
+  -- beq x y := compare x y == Ordering.eq
+  beq x := BEq.beq Ordering.eq ∘ compare x
+
+def ord2compare [Ord T] (x y: T): Bool :=
   compare x y == Ordering.eq
 
 def ord2beq_nel [Ord T] [BEq T] (x y: NonEmptyList T): Bool :=
   match x, y with
-  | .cons u x₁, .cons v y₁ => ord2beq u v && List.instBEqList.beq x₁ y₁
-  | .nil u, .nil v => ord2beq u v
+  | .cons u x₁, .cons v y₁ => ord2compare u v && List.instBEqList.beq x₁ y₁
+  | .nil u, .nil v => ord2compare u v
   | _, _ => false
 
 instance ord2beq_ei [Ord T] [BEq T] : BEq (ErrorItem T) where
