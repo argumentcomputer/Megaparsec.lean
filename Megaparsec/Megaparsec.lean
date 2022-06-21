@@ -418,7 +418,7 @@ instance (E S : Type) [m : Monad M] [stream : Stream S]
       -- let ps := [ (@ErrorItem.tokens stream.Token chunk) ]
       let es := match stream.chunkToTokens chunk with
         | List.cons x xs => [ErrorItem.tokens $ NonEmptyList.cons x xs]
-        | [] => [ErrorItem.label $ NonEmptyList.cons 'e' ['m', 'p', 't', 'y', ' ', 't', 'a', 'r', 'g', 'e', 't', ' ', 'c', 'h', 'u', 'n', 'k']]
+        | [] => [ErrorItem.label $ NonEmptyList.cons ' ' "Empty target chunk.".data]
         -- ^ This should never happen, because an empty target always succeeds by design
       ParseError.trivial pos' us es
     let len := stream.chunkLength chunk
@@ -435,7 +435,7 @@ instance (E S : Type) [m : Monad M] [stream : Stream S]
         else
           let oops := match stream.chunkToTokens consumed with
           | List.cons x xs => ErrorItem.tokens $ NonEmptyList.cons x xs
-          | [] => ErrorItem.label $ NonEmptyList.cons 'e' ['m', 'p', 't', 'y', ' ', 'c', 'o', 'n', 's', 'u', 'm', 'e', 'd', ' ', 'c', 'h', 'u', 'n', 'k']
+          | [] => ErrorItem.label $ NonEmptyList.cons ' ' "Nothing consumed.".data
           -- ^ This should never happen, because we handle chunkEmpty earlier on
           eerr (unexpect s₀.stateOffset oops) (State.mk s₀.stateInput s₀.stateOffset s₀.statePosState s₀.stateParseErrors)
   takeWhileP _ ml f :=
