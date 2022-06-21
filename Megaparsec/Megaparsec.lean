@@ -64,8 +64,6 @@ inductive ErrorItem (T: Type) where
 | label (l: NonEmptyList Char)
 | eof
 
-#check BEq.beq
-
 abbrev Hints (T : Type) := List (List (ErrorItem T))
 
 instance ord2beq [Ord T] : BEq T where
@@ -97,9 +95,9 @@ def errorItemMax [Ord T] [BEq T] (e₁ : ErrorItem T) (e₂ : ErrorItem T) : Err
 class Stream (S : Type) where
   Token : Type
   ordToken : Ord Token
-  hashToken : Hashable Token
-  beqEi : BEq (ErrorItem Token)
-  hashEi : Hashable (ErrorItem Token)
+  -- hashToken : Hashable Token
+  -- beqEi : BEq (ErrorItem Token)
+  -- hashEi : Hashable (ErrorItem Token)
   Tokens : Type
   ordTokens : Ord Tokens
   tokenToChunk : Token → Tokens
