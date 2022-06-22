@@ -2,6 +2,7 @@ import Megaparsec.ParserState
 import Megaparsec.Stream
 import Megaparsec.Errors.StreamErrors
 import Megaparsec.Errors.StateErrors
+import Megaparsec.Errors.Bundle
 
 namespace Parsec
 
@@ -29,14 +30,14 @@ structure ParsecT (E : Type) [stream : Stream.Stream S] [m : Monad M] (A : Type)
 /-- Just add MonadParsec to Id. -/
 abbrev Parsec E S [stream : Stream.Stream S] := @ParsecT S Id E stream Id.instMonadId
 
-def runParsecT (E : Type) [s : Stream.Stream S]
-               [m : Monad M] (A : Type)
-               (x : @ParsecT S M E s m A) (s₀: ParserState.State S E) : M (ParserState.Reply S E A) :=
+def runParsecT {E : Type} [s : Stream.Stream S] [m : Monad M] {A : Type}
+               (parser : @ParsecT S M E s m A) (s₀: ParserState.State S E)
+               : M (ParserState.Reply S E A) :=
   let run_cok  := fun a s₁ _h => pure ⟨s₁, true,  .ok a⟩
   let run_cerr := fun err s₁  => pure ⟨s₁, true,  .err err⟩
   let run_eok  := fun a s₁ _h => pure ⟨s₁, false, .ok a⟩
   let run_eerr := fun err s₁  => pure ⟨s₁, false, .err err⟩
-  x.unParser (ParserState.Reply S E A) s₀ run_cok run_cerr run_eok run_eerr
+  parser.unParser (ParserState.Reply S E A) s₀ run_cok run_cerr run_eok run_eerr
 
 def pPure [s : Stream.Stream S] [m : Monad M] (x : A) : @ParsecT S M E s m A :=
   ParsecT.mk $ fun b s _ _ eok _ => eok x s []
@@ -62,14 +63,14 @@ instance mprsₜ [s : Stream.Stream S] [m : Monad M] : Monad (@ParsecT S M E s m
 
 /-- Alternative instance for ParsecT -/
 def pZero [s : Stream.Stream S] [m: Monad M] : @ParsecT S M E s m A :=
-  ParsecT.mk $ fun _ s _ _ _ eerr => eerr (StreamErrors.ParseError.trivial s.stateOffset Option.none []) s
+  ParsecT.mk $ fun _ s _ _ _ eerr => eerr (StreamErrors.ParseError.trivial s.offset Option.none []) s
 
 def pPlus [s : Stream.Stream S] [m : Monad M] [Ord (s.Token)] [BEq (Stream.Stream.Token S)]
           (p₁ : @ParsecT S M E s m A) (p₂ : @ParsecT S M E s m A) : @ParsecT S M E s m A :=
   ParsecT.mk $ fun B s cok cerr eok eerr =>
     let meer err ms :=
         let ncerr err' s' := cerr (StreamErrors.mergeError err' err) (ParserState.longestMatch ms s')
-        let neok x s' hs := eok x s' (StreamErrors.toHints s'.stateOffset err ++ hs)
+        let neok x s' hs := eok x s' (StreamErrors.toHints s'.offset err ++ hs)
         let neerr err' s' := eerr (StreamErrors.mergeError err' err) (ParserState.longestMatch ms s')
         p₂.unParser B s cok ncerr neok neerr
     p₁.unParser B s cok cerr eok eerr
@@ -82,6 +83,30 @@ instance altpₜ [s : Stream.Stream S] [Ord (s.Token)] [BEq (s.Token)] [m: Monad
 --================= IMPORTANT FUNCTIONS ===================--
 --=========================================================--
 
--- def parse [Stream S] (Parsec E S A) String S : Util.Either ()
+def runParserT' [m : Monad M] {S : Type} [stream : Stream.Stream S] {E A : Type}
+                (parser : @ParsecT S M E stream m A) (s₀ : ParserState.State S E)
+                : M (ParserState.State S E × Util.Either (@Bundle.ParseErrorBundle S stream E) A) := do
+  let reply ← runParsecT parser s₀
+  sorry
+
+def runParser' (S : Type) [stream : Stream.Stream S]
+               (E A : Type) (parser : @Parsec E S stream A)
+               (state : ParserState.State S E)
+               : (ParserState.State S E) × (Util.Either (@Bundle.ParseErrorBundle S stream E) A) :=
+  runParserT' parser state
+
+-- def runParser {S : Type} [stream : Stream.Stream S] {E A : Type}
+--               (parser : @Parsec E S stream A) (sourceName : String) (xs : S)
+--               : Util.Either (@Bundle.ParseErrorBundle S stream E) A :=
+--   -- (runParser' S E A parser (ParserState.initialState sourceName xs)).2
+--   sorry
+
+
+-- def parse [stream : Stream.Stream S] {E A : Type}
+--           (parser : @Parsec E S stream A) (sourceName : String) (xs : S)
+--           : Util.Either (@Bundle.ParseErrorBundle S stream E) A :=
+--   runParser parser sourceName xs
+
+-- #check (1,2)
 
 end Parsec

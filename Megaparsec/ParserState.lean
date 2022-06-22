@@ -8,21 +8,21 @@ structure Pos where
   pos : Nat
 
 structure SourcePos where
-  sourceName : String
-  sourceLine : Pos
-  sourceColumn: Pos
+  name : String
+  line : Pos
+  column: Pos
 
 structure PosState (S : Type) where
-  pstateInput : S
-  pstateOffset : Nat
-  pstateSourcePos : SourcePos
-  pstateLinePrefix : String
+  input : S
+  offset : Nat
+  sourcePos : SourcePos
+  linePrefix : String
 
 structure State (S E : Type) [s : Stream.Stream S] where
-  stateInput       : S
-  stateOffset      : Nat
-  statePosState    : PosState S
-  stateParseErrors : List (@StreamErrors.ParseError S E s)
+  input       : S
+  offset      : Nat
+  posState    : PosState S
+  parseErrors : List (@StreamErrors.ParseError S E s)
 
 structure Reply (S E A : Type) [Stream.Stream S] where
   state    : State S E
@@ -30,7 +30,7 @@ structure Reply (S E A : Type) [Stream.Stream S] where
   result   : Result.Result S E A
 
 def longestMatch [Stream.Stream S] (s₁ : State S E) (s₂ : State S E) : State S E :=
-  match compare s₁.stateOffset s₂.stateOffset with
+  match compare s₁.offset s₂.offset with
     | Ordering.lt => s₂
     | Ordering.eq => s₂
     | Ordering.gt => s₁
