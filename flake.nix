@@ -33,7 +33,7 @@
         pkgs = nixpkgs.legacyPackages.${system};
         project = leanPkgs.buildLeanPackage {
           debug = false;
-          name = "Megparsec.lean";
+          name = "Megaparsec.lean";
           src = ".";
         };
       in
