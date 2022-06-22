@@ -2,7 +2,7 @@ import Megaparsec.Util
 
 namespace Errors
 
-/-- Error data types -/
+/-- Error data types, and ways to bundle those together. -/
 
 inductive ErrorItem (T : Type) where
 | tokens (t : Util.NonEmptyList T)
