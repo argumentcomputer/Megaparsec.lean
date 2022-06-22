@@ -49,8 +49,4 @@ def refreshLastHint (h : Errors.Hints T) (m : Option (Errors.ErrorItem T)) : Err
     | (_ :: xs, Option.none) => xs
     | (_ :: xs, Option.some y) => [y] :: xs
 
-
--- structure ParseErrorBundle [Stream.Stream S] (E : Type) where
---   errors : Util.NonEmptyList ()
-
 end StreamErrors
