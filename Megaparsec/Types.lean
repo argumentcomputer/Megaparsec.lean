@@ -1,4 +1,5 @@
 import Megaparsec.Stream
+import Megaparsec.Errors.StreamErrors
 
 namespace Types
 
@@ -26,7 +27,7 @@ structure State (S E : Type) [s : Stream.Stream S] where
   stateInput       : S
   stateOffset      : Nat
   statePosState    : PosState S
-  stateParseErrors : List (@Stream.ParseError S E s)
+  stateParseErrors : List (@StreamErrors.ParseError S E s)
 
 def longestMatch [Stream.Stream S] (s₁ : State S E) (s₂ : State S E) : State S E :=
   match compare s₁.stateOffset s₂.stateOffset with
@@ -36,7 +37,7 @@ def longestMatch [Stream.Stream S] (s₁ : State S E) (s₂ : State S E) : State
 
 inductive Result (S E A : Type) [s : Stream.Stream S] where
 | ok (x : A)
-| err (e : @Stream.ParseError S E s)
+| err (e : @StreamErrors.ParseError S E s)
 
 structure Reply (S E A : Type) [Stream.Stream S] where
   state    : State S E
@@ -61,11 +62,11 @@ def withHints [stream : Stream.Stream S] {M : Type u → Type v}
                 -- | Hints to use
               (ps' : Errors.Hints (stream.Token))
                 -- | Continuation to influence
-              (c : @Stream.ParseError S E stream → State S E → M B)
+              (c : @StreamErrors.ParseError S E stream → State S E → M B)
                 -- | First argument of resulting continuation
-              (e : @Stream.ParseError S E stream) : State S E → M B :=
+              (e : @StreamErrors.ParseError S E stream) : State S E → M B :=
   match e with
-    | Stream.ParseError.trivial pos us ps => c $ Stream.ParseError.trivial pos us (List.join (ps :: ps'))
+    | StreamErrors.ParseError.trivial pos us ps => c $ StreamErrors.ParseError.trivial pos us (List.join (ps :: ps'))
     | _ => c e
 
 end Types
