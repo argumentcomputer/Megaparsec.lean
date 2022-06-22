@@ -1,6 +1,7 @@
 import Megaparsec.ParserState
 import Megaparsec.Stream
 import Megaparsec.Errors.StreamErrors
+import Megaparsec.Errors.StateErrors
 
 namespace Parsec
 
@@ -52,8 +53,8 @@ instance [s : Stream.Stream S] [m : Monad M] : Functor (@ParsecT S M E s m) wher
 def pBind [s : Stream.Stream S] [m : Monad M]
           (p : @ParsecT S M E s m A) (k : A → @ParsecT S M E s m B) : @ParsecT S M E s m B :=
   ParsecT.mk $ fun B s cok cerr eok eerr =>
-    let mcok x s' hs := ParsecT.unParser (k x) B s' cok cerr (ParserState.accHints hs cok) (ParserState.withHints hs cerr)
-    let meok x s' hs := ParsecT.unParser (k x) B s' cok cerr (ParserState.accHints hs eok) (ParserState.withHints hs eerr)
+    let mcok x s' hs := ParsecT.unParser (k x) B s' cok cerr (StateErrors.accHints hs cok) (StateErrors.withHints hs cerr)
+    let meok x s' hs := ParsecT.unParser (k x) B s' cok cerr (StateErrors.accHints hs eok) (StateErrors.withHints hs eerr)
     p.unParser B s mcok cerr meok eerr
 
 instance mprsₜ [s : Stream.Stream S] [m : Monad M] : Monad (@ParsecT S M E s m) where
