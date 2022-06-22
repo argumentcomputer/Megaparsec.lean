@@ -1,7 +1,7 @@
 import Megaparsec.Parsec
 import Megaparsec.RWST
 import Megaparsec.Stream
-import Megaparsec.Types
+import Megaparsec.ParserState
 
 namespace MonadParsec
 
@@ -43,9 +43,9 @@ class MonadParsec (E S : Type) [Monad M] [Alternative M] [strm : Stream.Stream S
   -- | Backtracks if there aren't enough tokens in a stream to be returned as a chunk. Otherwise, take the amount of tokens and return the chunk
   takeP (A : Type) (name : Option String) (n : Nat) : M strm.Tokens
   -- | Return current 'State' of the parser
-  getParserState: M (Types.State S E)
+  getParserState: M (ParserState.State S E)
   -- | Update parser state with @phi@.
-  updateParserState (phi : (Types.State S E → Types.State S E)) : M Unit
+  updateParserState (phi : (ParserState.State S E → ParserState.State S E)) : M Unit
 
 def msₜ [m : Monad M] : Monad (StateT σ M) :=
   StateT.instMonadStateT
@@ -111,7 +111,7 @@ def pEof [stream : Stream.Stream S] : @Parsec.ParsecT S M E stream m Unit :=
       | Option.some (x,_) =>
           let us := (Option.some ∘ Errors.ErrorItem.tokens ∘ Util.nes) x
           let ps := [ Errors.ErrorItem.eof ]
-          eerr (StreamErrors.ParseError.trivial o us ps) (Types.State.mk input o pst de)
+          eerr (StreamErrors.ParseError.trivial o us ps) (ParserState.State.mk input o pst de)
 
 instance (E S : Type) [m : Monad M] [stream : Stream.Stream S]
          [o : Ord stream.Token] [e : BEq stream.Token] :
@@ -144,7 +144,7 @@ instance (E S : Type) [m : Monad M] [stream : Stream.Stream S]
         | .none =>
             let us := (.some ∘ .tokens ∘ Util.nes) c
             eerr (.trivial o us ps) s
-        | .some x => cok x (Types.State.mk cs (o + 1) pst de) []
+        | .some x => cok x (ParserState.State.mk cs (o + 1) pst de) []
   tokens A matcher chunk := Parsec.ParsecT.mk $ fun B s₀ cok _ eok eerr =>
     let unexpect pos' u :=
       let us := pure u
@@ -160,7 +160,7 @@ instance (E S : Type) [m : Monad M] [stream : Stream.Stream S]
       | .none => eerr (unexpect s₀.stateOffset Errors.ErrorItem.eof) s₀
       | .some (consumed, rest) =>
         if matcher chunk consumed then
-          let s₁ := Types.State.mk rest (s₀.stateOffset + len) s₀.statePosState s₀.stateParseErrors
+          let s₁ := ParserState.State.mk rest (s₀.stateOffset + len) s₀.statePosState s₀.stateParseErrors
           if Stream.chunkEmpty chunk then
             eok consumed s₁ []
           else
@@ -170,7 +170,7 @@ instance (E S : Type) [m : Monad M] [stream : Stream.Stream S]
           | List.cons x xs => Errors.ErrorItem.tokens $ Util.NonEmptyList.cons x xs
           | [] => Errors.ErrorItem.label $ Util.NonEmptyList.cons ' ' "Nothing consumed.".data
           -- ^ This should never happen, because we handle chunkEmpty earlier on
-          eerr (unexpect s₀.stateOffset oops) (Types.State.mk s₀.stateInput s₀.stateOffset s₀.statePosState s₀.stateParseErrors)
+          eerr (unexpect s₀.stateOffset oops) (ParserState.State.mk s₀.stateInput s₀.stateOffset s₀.statePosState s₀.stateParseErrors)
   takeWhileP _ ml f :=
     Parsec.ParsecT.mk $ fun _ s cok _ eok _ =>
       let input := s.stateInput
@@ -183,8 +183,8 @@ instance (E S : Type) [m : Monad M] [stream : Stream.Stream S]
                   | Option.none => []
                   | Option.some l => [[Errors.ErrorItem.label l]]
       if Stream.chunkEmpty ts
-        then eok ts (Types.State.mk input' (o + len) pst de) hs
-        else cok ts (Types.State.mk input' (o + len) pst de) hs
+        then eok ts (ParserState.State.mk input' (o + len) pst de) hs
+        else cok ts (ParserState.State.mk input' (o + len) pst de) hs
   takeWhile1P _ ml f := Parsec.ParsecT.mk $ fun _ s cok _ _ eerr =>
       let input := s.stateInput
       let o := s.stateOffset
@@ -203,8 +203,8 @@ instance (E S : Type) [m : Monad M] [stream : Stream.Stream S]
               | Option.none => Errors.ErrorItem.eof
               | Option.some (t,_) => Errors.ErrorItem.tokens (Util.nes t)
           let ps := Util.option [] (fun x => [x]) el
-          eerr (StreamErrors.ParseError.trivial o us ps) (Types.State.mk input o pst de)
-        else cok ts (Types.State.mk input' (o + len) pst de) hs
+          eerr (StreamErrors.ParseError.trivial o us ps) (ParserState.State.mk input o pst de)
+        else cok ts (ParserState.State.mk input' (o + len) pst de) hs
   takeP _ ml n := Parsec.ParsecT.mk $ fun _ s cok _ _ eerr =>
       let input := s.stateInput
       let o := s.stateOffset
@@ -217,8 +217,8 @@ instance (E S : Type) [m : Monad M] [stream : Stream.Stream S]
         | Option.some (ts, input') =>
             let len := stream.chunkLength ts
             if not (len == n)
-            then eerr (StreamErrors.ParseError.trivial (o + len) (pure Errors.ErrorItem.eof) ps) (Types.State.mk input o pst de)
-            else cok ts (Types.State.mk input' (o + len) pst de) []
+            then eerr (StreamErrors.ParseError.trivial (o + len) (pure Errors.ErrorItem.eof) ps) (ParserState.State.mk input o pst de)
+            else cok ts (ParserState.State.mk input' (o + len) pst de) []
   getParserState := Parsec.ParsecT.mk $ fun _ s _ _ eok _ => eok s s []
   updateParserState f := Parsec.ParsecT.mk $ fun _ s _ _ eok _ => eok Unit.unit (f s) []
 
