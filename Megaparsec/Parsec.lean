@@ -83,17 +83,17 @@ instance altpₜ [s : Stream.Stream S] [Ord (s.Token)] [BEq (s.Token)] [m: Monad
 --================= IMPORTANT FUNCTIONS ===================--
 --=========================================================--
 
-def runParserT' [m : Monad M] {S : Type} [stream : Stream.Stream S] {E A : Type}
-                (parser : @ParsecT S M E stream m A) (s₀ : ParserState.State S E)
-                : M (ParserState.State S E × Util.Either (@Bundle.ParseErrorBundle S stream E) A) := do
-  let reply ← runParsecT parser s₀
-  sorry
+-- def runParserT' [m : Monad M] {S : Type} [stream : Stream.Stream S] {E A : Type}
+--                 (parser : @ParsecT S M E stream m A) (s₀ : ParserState.State S E)
+--                 : M (ParserState.State S E × Util.Either (@Bundle.ParseErrorBundle S stream E) A) := do
+--   let reply ← runParsecT parser s₀
+--   sorry
 
-def runParser' (S : Type) [stream : Stream.Stream S]
-               (E A : Type) (parser : @Parsec E S stream A)
-               (state : ParserState.State S E)
-               : (ParserState.State S E) × (Util.Either (@Bundle.ParseErrorBundle S stream E) A) :=
-  runParserT' parser state
+-- def runParser' (S : Type) [stream : Stream.Stream S]
+--                (E A : Type) (parser : @Parsec E S stream A)
+--                (state : ParserState.State S E)
+--                : (ParserState.State S E) × (Util.Either (@Bundle.ParseErrorBundle S stream E) A) :=
+--   runParserT' parser state
 
 -- def runParser {S : Type} [stream : Stream.Stream S] {E A : Type}
 --               (parser : @Parsec E S stream A) (sourceName : String) (xs : S)

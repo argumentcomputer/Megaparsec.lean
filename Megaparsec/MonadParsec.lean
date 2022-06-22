@@ -162,7 +162,7 @@ instance (E S : Type) [m : Monad M] [stream : Stream.Stream S]
         if matcher chunk consumed then
           let s₁ := ParserState.State.mk rest (s₀.offset + len) s₀.posState s₀.parseErrors
           if Stream.chunkEmpty chunk then
-            eok consumed s₁ [offset]
+            eok consumed s₁ []
           else
             cok consumed s₁ []
         else
