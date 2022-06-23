@@ -33,6 +33,16 @@ inductive NonEmptyList (A : Type) where
 | cons (x : A) (xs : List A)
   deriving BEq
 
+def nonEmpty (as : List α) : Option (NonEmptyList α) :=
+  match as with
+  | [] => .none
+  | List.cons x xs => NonEmptyList.cons x xs
+
+def nonEmpty' (as : List α) : Option (NonEmptyList α) :=
+  match as with
+  | [] => .none
+  | List.cons x xs => .some $ NonEmptyList.cons x xs
+
 instance ord2beq [Ord T] : BEq T where
   -- beq x y := compare x y == Ordering.eq
   beq x := BEq.beq Ordering.eq ∘ compare x
