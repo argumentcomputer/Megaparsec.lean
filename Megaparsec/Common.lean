@@ -8,9 +8,6 @@ Simple combinators that are agnostic to the stream they're applied to.
 
 namespace Common
 
-#check MonadParsec.MonadParsec.tokens
-#check (fun x y => x == y)
-
 def string [m : Monad M] [a : Alternative M]
            [strm : Stream.Stream S] [mₚ : @MonadParsec.MonadParsec M E S m a strm]:
            strm.Tokens → M (strm.Tokens) :=
