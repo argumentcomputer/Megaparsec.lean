@@ -1,3 +1,4 @@
+import Megaparsec.NEList
 import Megaparsec.Util
 
 namespace Errors
@@ -5,8 +6,8 @@ namespace Errors
 /-- Error data types, and ways to bundle those together. -/
 
 inductive ErrorItem (T : Type) where
-| tokens (t : Util.NonEmptyList T)
-| label (l : Util.NonEmptyList Char)
+| tokens (t : NEList.NEList T)
+| label (l : NEList.NEList Char)
 | eof
 
 abbrev Hints (T : Type) := List (List (ErrorItem T))
@@ -14,8 +15,8 @@ abbrev Hints (T : Type) := List (List (ErrorItem T))
 instance ord2beq_ei [Ord T] [BEq T] : BEq (ErrorItem T) where
   beq (u v : ErrorItem T) :=
     match u, v with
-    | .tokens nelᵤ, .tokens nelᵥ => Util.ord2beq_nel nelᵤ nelᵥ
-    | .label nelᵤ, .label nelᵥ => Util.ord2beq_nel nelᵤ nelᵥ
+    | .tokens nelᵤ, .tokens nelᵥ => NEList.ord2beq_nel nelᵤ nelᵥ
+    | .label nelᵤ, .label nelᵥ => NEList.ord2beq_nel nelᵤ nelᵥ
     | .eof, .eof => true
     | _, _ => false
 

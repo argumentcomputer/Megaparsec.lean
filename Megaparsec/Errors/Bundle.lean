@@ -1,16 +1,16 @@
 import Megaparsec.Stream
 import Megaparsec.Errors.StreamErrors
 import Megaparsec.ParserState
-import Megaparsec.Util
+import Megaparsec.NEList
 
 namespace Bundle
 
 structure ParseErrorBundle [stream : Stream.Stream S] {E : Type} where
-  errors : Util.NonEmptyList (@StreamErrors.ParseError S E stream)
+  errors : NEList.NEList (@StreamErrors.ParseError S E stream)
   posState : ParserState.PosState S
 
 def toBundle {S : Type} [stream : Stream.Stream S] {E : Type}
-             (s : ParserState.State S E) (errs : Util.NonEmptyList (@StreamErrors.ParseError S E stream))
+             (s : ParserState.State S E) (errs : NEList.NEList (@StreamErrors.ParseError S E stream))
              : @ParseErrorBundle S stream E :=
   ParseErrorBundle.mk errs s.posState
 
