@@ -3,6 +3,7 @@ import Megaparsec.Stream
 import Megaparsec.Errors.StreamErrors
 import Megaparsec.Errors.StateErrors
 import Megaparsec.Errors.Bundle
+import Megaparsec.NEList
 
 namespace Parsec
 
@@ -90,10 +91,10 @@ def runParserT' [m : Monad M] {S : Type} [stream : Stream.Stream S] {E A : Type}
   let s₁ := reply.state
   pure $
     match reply.result with
-    | .ok x => match Util.nonEmpty (reply.state.parseErrors) with
+    | .ok x => match NEList.nonEmpty (reply.state.parseErrors) with
               | .none => (s₁, Util.Either.right x)
               | .some pes => (s₁, .left (Bundle.toBundle s₀ pes))
-    | .err e => (s₁, Util.Either.left (Bundle.toBundle s₀ $ Util.NonEmptyList.cons e s₁.parseErrors))
+    | .err e => (s₁, Util.Either.left (Bundle.toBundle s₀ $ NEList.toNEList e s₁.parseErrors))
 
 def runParser' {S : Type} [stream : Stream.Stream S] {E A : Type}
                (parser : @Parsec E S stream A) (state : ParserState.State S E)
