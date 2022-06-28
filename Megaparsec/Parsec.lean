@@ -3,7 +3,8 @@ import Megaparsec.Stream
 import Megaparsec.Errors.StreamErrors
 import Megaparsec.Errors.StateErrors
 import Megaparsec.Errors.Bundle
-import Megaparsec.NEList
+
+import YatimaStdLib
 
 namespace Parsec
 
@@ -86,29 +87,29 @@ instance altpₜ [s : Stream.Stream S] [Ord (s.Token)] [BEq (s.Token)] [m: Monad
 
 def runParserT' [m : Monad M] {S : Type} [stream : Stream.Stream S] {E A : Type}
                 (parser : @ParsecT S M E stream m A) (s₀ : ParserState.State S E)
-                : M (ParserState.State S E × Util.Either (@Bundle.ParseErrorBundle S stream E) A) := do
+                : M (ParserState.State S E × Either (@Bundle.ParseErrorBundle S stream E) A) := do
   let reply ← runParsecT parser s₀
   let s₁ := reply.state
   pure $
     match reply.result with
     | .ok x => match NEList.nonEmpty (reply.state.parseErrors) with
-              | .none => (s₁, Util.Either.right x)
+              | .none => (s₁, Either.right x)
               | .some pes => (s₁, .left (Bundle.toBundle s₀ pes))
-    | .err e => (s₁, Util.Either.left (Bundle.toBundle s₀ $ NEList.toNEList e s₁.parseErrors))
+    | .err e => (s₁, Either.left (Bundle.toBundle s₀ $ List.toNEList e s₁.parseErrors))
 
 def runParser' {S : Type} [stream : Stream.Stream S] {E A : Type}
                (parser : @Parsec E S stream A) (state : ParserState.State S E)
-               : ParserState.State S E × Util.Either (@Bundle.ParseErrorBundle S stream E) A :=
+               : ParserState.State S E × Either (@Bundle.ParseErrorBundle S stream E) A :=
   runParserT' parser state
 
 def runParser {S : Type} [stream : Stream.Stream S] {E A : Type}
               (parser : @Parsec E S stream A) (sourceName : String) (xs : S)
-              : Util.Either (@Bundle.ParseErrorBundle S stream E) A :=
+              : Either (@Bundle.ParseErrorBundle S stream E) A :=
   (runParser' parser (ParserState.initialState sourceName xs)).2
 
 def parse [stream : Stream.Stream S] {E A : Type}
           (parser : @Parsec E S stream A) (sourceName : String) (xs : S)
-          : Util.Either (@Bundle.ParseErrorBundle S stream E) A :=
+          : Either (@Bundle.ParseErrorBundle S stream E) A :=
   runParser parser sourceName xs
 
 def parseTest [stream : Stream.Stream S] {E A : Type} [ToString A]

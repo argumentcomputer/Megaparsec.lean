@@ -1,5 +1,5 @@
 import Megaparsec.Errors
-import Megaparsec.Util
+import YatimaStdLib
 
 namespace Stream
 
@@ -37,7 +37,9 @@ instance str : Stream String where
   takeN n str :=
     match n with
       | Nat.zero => Option.some (String.mk [], str)
-      | n => if String.isEmpty str then Option.none else Util.splitAtString n str
+      | n => if String.isEmpty str 
+             then Option.none 
+             else Option.some $ String.splitAtString n str
   takeWhile p str :=
     match List.span p str.data with
       | (s₁,s₂) => (String.mk s₁, String.mk s₂)
