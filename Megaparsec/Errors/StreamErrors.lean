@@ -1,6 +1,7 @@
-import Megaparsec.Util
 import Megaparsec.Errors
 import Megaparsec.Stream
+
+import YatimaStdLib
 
 namespace StreamErrors
 
