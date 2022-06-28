@@ -1,8 +1,8 @@
 import Megaparsec.Parsec
-import Megaparsec.RWST
 import Megaparsec.Stream
 import Megaparsec.ParserState
-import Megaparsec.NEList
+
+import YatimaStdLib
 
 namespace MonadParsec
 
@@ -27,7 +27,7 @@ class MonadParsec (E S : Type) [Monad M] [Alternative M] [strm : Stream.Stream S
   -- | Uses @phi@ to recover from failure in @parser@.
   withRecovery (A : Type) (phi : @StreamErrors.ParseError S E strm → M A) (parser: M A): M A
   -- | Observes 'ParseError's as they happen, without backtracking.
-  observing (A : Type) (parser : M A): M (@Util.Either (@StreamErrors.ParseError S E strm) A)
+  observing (A : Type) (parser : M A): M (Either (@StreamErrors.ParseError S E strm) A)
   -- | The parser at the end of the stream.
   eof : M Unit
   -- | Parser @'token' matcher expected@ accepts tokens for which @matcher@ returns '.just', accumulates '.noithing's into an 'Std.HashSet' for error reporting.
@@ -65,7 +65,7 @@ def pLabel [stream : Stream.Stream S] (A : Type) (l : String) (p : @Parsec.Parse
       let eok' x s' hs := eok x s' (StreamErrors.refreshLastHint hs el)
       let eerr' err := eerr $
          match err with
-          | StreamErrors.ParseError.trivial pos us _ => StreamErrors.ParseError.trivial pos us (Util.option [] (fun x => [x]) el)
+          | StreamErrors.ParseError.trivial pos us _ => StreamErrors.ParseError.trivial pos us (Option.option [] (fun x => [x]) el)
           | _ => err
       p.unParser B s cok' cerr eok' eerr'
 
@@ -73,7 +73,7 @@ def pNotFollowedBy [stream : Stream.Stream S] (A : Type) (p : @Parsec.ParsecT S 
   Parsec.ParsecT.mk $ fun B s _ _ eok eerr =>
     let input := s.input
     let o := s.offset
-    let what := Util.option Errors.ErrorItem.eof (Errors.ErrorItem.tokens ∘ (NEList.NEList.uno) ∘ Util.fst) (stream.take1 input)
+    let what := Option.option Errors.ErrorItem.eof (Errors.ErrorItem.tokens ∘ (.uno) ∘ (fun (x,_) => x)) (stream.take1 input)
     let unexpect u := @StreamErrors.ParseError.trivial S E stream o (Option.some u) []
     let cok' _ _ _ := eerr (unexpect what) s
     let cerr' _ _ := eok Unit.unit s []
@@ -110,7 +110,7 @@ def pEof [stream : Stream.Stream S] : @Parsec.ParsecT S M E stream m Unit :=
     match stream.take1 input with
       | Option.none => eok Unit.unit s []
       | Option.some (x,_) =>
-          let us := (Option.some ∘ Errors.ErrorItem.tokens ∘ NEList.NEList.uno) x
+          let us := (Option.some ∘ Errors.ErrorItem.tokens ∘ .uno) x
           let ps := [ Errors.ErrorItem.eof ]
           eerr (StreamErrors.ParseError.trivial o us ps) (ParserState.State.mk input o pst de)
 
@@ -130,9 +130,9 @@ instance (E S : Type) [m : Monad M] [stream : Stream.Stream S]
   notFollowedBy := pNotFollowedBy
   withRecovery := pWithRecovery
   observing _ p := Parsec.ParsecT.mk $ fun B s cok _ eok _ =>
-    let cerr' err s' := cok (Util.Either.left err) s' []
-    let eerr' err s' := eok (Util.Either.left err) s' (StreamErrors.toHints s'.offset err)
-    p.unParser B s (cok ∘ Util.Either.right) cerr' (eok ∘ Util.Either.right) eerr'
+    let cerr' err s' := cok (.left err) s' []
+    let eerr' err s' := eok (.left err) s' (StreamErrors.toHints s'.offset err)
+    p.unParser B s (cok ∘ .right) cerr' (eok ∘ .right) eerr'
   eof := pEof
   token A matcher ps := Parsec.ParsecT.mk $ fun B s cok _ _ eerr =>
     let input := s.input
@@ -143,7 +143,7 @@ instance (E S : Type) [m : Monad M] [stream : Stream.Stream S]
       | .none => eerr (.trivial o (.some .eof) ps) s
       | .some (c, cs) => match matcher c with
         | .none =>
-            let us := (.some ∘ .tokens ∘ NEList.NEList.uno) c
+            let us := (.some ∘ .tokens ∘ .uno) c
             eerr (.trivial o us ps) s
         | .some x => cok x (ParserState.State.mk cs (o + 1) pst de) []
   tokens A matcher chunk := Parsec.ParsecT.mk $ fun B s₀ cok _ eok eerr =>
@@ -151,8 +151,8 @@ instance (E S : Type) [m : Monad M] [stream : Stream.Stream S]
       let us := pure u
       -- let ps := [ (@ErrorItem.tokens stream.Token chunk) ]
       let es := match stream.chunkToTokens chunk with
-        | List.cons x xs => [Errors.ErrorItem.tokens $ NEList.toNEList x xs]
-        | [] => [Errors.ErrorItem.label $ NEList.toNEList ' ' "Empty target chunk.".data]
+        | List.cons x xs => [Errors.ErrorItem.tokens $ List.toNEList x xs]
+        | [] => [Errors.ErrorItem.label $ List.toNEList ' ' "Empty target chunk.".data]
         -- ^ This should never happen, because an empty target always succeeds by design
       StreamErrors.ParseError.trivial pos' us es
     let len := stream.chunkLength chunk
@@ -168,8 +168,8 @@ instance (E S : Type) [m : Monad M] [stream : Stream.Stream S]
             cok consumed s₁ []
         else
           let oops := match stream.chunkToTokens consumed with
-          | List.cons x xs => Errors.ErrorItem.tokens $ NEList.toNEList x xs
-          | [] => Errors.ErrorItem.label $ NEList.toNEList ' ' "Nothing consumed.".data
+          | List.cons x xs => Errors.ErrorItem.tokens $ List.toNEList x xs
+          | [] => Errors.ErrorItem.label $ List.toNEList ' ' "Nothing consumed.".data
           -- ^ This should never happen, because we handle chunkEmpty earlier on
           eerr (unexpect s₀.offset oops) (ParserState.State.mk s₀.input s₀.offset s₀.posState s₀.parseErrors)
   takeWhileP _ ml f :=
@@ -202,8 +202,8 @@ instance (E S : Type) [m : Monad M] [stream : Stream.Stream S]
           let us := Option.some $
             match stream.take1 input with
               | Option.none => Errors.ErrorItem.eof
-              | Option.some (t,_) => Errors.ErrorItem.tokens (NEList.NEList.uno t)
-          let ps := Util.option [] (fun x => [x]) el
+              | Option.some (t,_) => Errors.ErrorItem.tokens (.uno t)
+          let ps := Option.option [] (fun x => [x]) el
           eerr (StreamErrors.ParseError.trivial o us ps) (ParserState.State.mk input o pst de)
         else cok ts (ParserState.State.mk input' (o + len) pst de) hs
   takeP _ ml n := Parsec.ParsecT.mk $ fun _ s cok _ _ eerr =>
@@ -212,7 +212,7 @@ instance (E S : Type) [m : Monad M] [stream : Stream.Stream S]
       let pst := s.posState
       let de := s.parseErrors
       let el := Errors.ErrorItem.label <$> (ml >>= NEList.nonEmptyString)
-      let ps := Util.option [] (fun x => [x]) el
+      let ps := Option.option [] (fun x => [x]) el
       match stream.takeN n input with
         | Option.none => eerr (StreamErrors.ParseError.trivial o (pure Errors.ErrorItem.eof) ps) s
         | Option.some (ts, input') =>
@@ -230,9 +230,9 @@ instance (E S : Type) [m: Monad M] [a: Alternative M]
   label A f st := (mₚ.label E S (A × σ) f) ∘ st
   attempt A st := mₚ.attempt E S (A × σ) ∘ st
   lookAhead A state x := mₚ.lookAhead E S (A × σ) (state x)
-  notFollowedBy A state x := Util.seqComp (mₚ.notFollowedBy E S A (Util.fst <$> state x)) (pure (Unit.unit , x))
+  notFollowedBy A state x := Monad.seqComp (mₚ.notFollowedBy E S A (Prod.fst <$> state x)) (pure (Unit.unit , x))
   withRecovery A cont state x := mₚ.withRecovery (A × σ) (fun e => (cont e) x) (state x)
-  observing A f x := Util.fixs x <$> (mₚ.observing (A × σ) (f x))
+  observing A f x := Either.fixs x <$> (mₚ.observing (A × σ) (f x))
   eof := liftM mₚ.eof
   token A test mt := liftM (mₚ.token E A test mt)
   tokens A e ts := liftM (mₚ.tokens E S e ts)
@@ -247,7 +247,7 @@ instance (E S : Type) [m: Monad M] [a: Alternative M]
 instance (E S W : Type) [m : Monoid W]
          [monad_inst : Monad M] [a : Alternative M] [s : Stream.Stream S]
          [mₚ : @MonadParsec M E S monad_inst a s]
-         [MonadLiftT M (RWST.RWST R W S M)] : @MonadParsec (RWST.RWST R W S M) E S
+         [MonadLiftT M (RWST R W S M)] : @MonadParsec (RWST R W S M) E S
          (@RWST.mrwsₜ M R W S m monad_inst) (@RWST.arwsₜ W M R S m monad_inst a) s where
   parseError A err := liftM (mₚ.parseError A err)
   label A n m := fun r s => mₚ.label E S (A × S × W) n (m r s)
@@ -259,7 +259,7 @@ instance (E S W : Type) [m : Monoid W]
     mₚ.notFollowedBy E S Unit (RWST.void (state r s))
     pure (Unit.unit, s, m.one)
   withRecovery A n m := fun r s => mₚ.withRecovery (A × S × W) (fun e => (n e) r s) (m r s)
-  observing A m := fun r s => Util.fixs' s <$> mₚ.observing (A × S × W) (m r s)
+  observing A m := fun r s => Either.fixs' s <$> mₚ.observing (A × S × W) (m r s)
   eof := liftM mₚ.eof
   token A test mt := liftM (mₚ.token E A test mt)
   tokens A e ts := liftM (mₚ.tokens E S e ts)
