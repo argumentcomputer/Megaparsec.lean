@@ -1,0 +1,1 @@
+def main : IO Unit := IO.println "Megaparsec demo coming soon"
