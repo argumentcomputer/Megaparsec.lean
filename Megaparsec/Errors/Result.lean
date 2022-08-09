@@ -1,10 +1,13 @@
-import Megaparsec.Stream
-import Megaparsec.Errors.StreamErrors
+import Megaparsec.Errors.ParseError
+import Straume.Iterator
 
-namespace Result
+namespace Megaparsec.Errors.Result
 
-inductive Result (S E A : Type) [s : Stream.Stream S] where
-| ok (x : A)
-| err (e : @StreamErrors.ParseError S E s)
+open Megaparsec.Errors.ParseError
+inductive Result (β : Type u) (γ : Type v) (E : Type u) where
+| ok (x : γ)
+| err (e : ParseError β E)
+
+export Result (ok err)
 
 end Result

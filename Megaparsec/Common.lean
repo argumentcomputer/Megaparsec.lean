@@ -1,7 +1,15 @@
-import Megaparsec.Stream
 import Megaparsec.MonadParsec
+import Straume.Iterator
+import Straume.Coco
+import Straume
 
 import YatimaStdLib
+
+open MonadParsec
+open Straume.Iterator (Iterable)
+open Straume.Iterator renaming Bijection → Iterable.Bijection
+open Straume.Coco
+open Straume
 
 /-!
 # Common token combinators
@@ -9,14 +17,13 @@ import YatimaStdLib
 Simple combinators that are agnostic to the stream they're applied to.
 -/
 
-namespace Common
+namespace Megaparsec.Common
 
-def string [m : Monad M] [a : Alternative M]
-           [strm : Stream.Stream S] [mₚ : @MonadParsec.MonadParsec M E S m a strm]:
-           strm.Tokens → M (strm.Tokens) :=
-  fun expected =>
-    mₚ.tokens E S (fun x y => @BEq.beq (strm.Tokens) (@NEList.BEqOfOrd strm.Tokens strm.ordTokens) x y) expected
+-- TODO: case-insensitive version
+def string (m : Type u → Type v) (℘ : Type u) {E : Type u} {α β : Type u} (x : α) [MonadParsec m ℘ α β E] [BEq α] : m α :=
+  MonadParsec.tokens ℘ (BEq.beq) x
 
--- TODO: Case-insensitive string
+-- TODO: Move to YatimaStdLib
+def between [SeqLeft φ] [SeqRight φ] (f h g : φ α) : φ α := f *> h <* g
 
 end Common
