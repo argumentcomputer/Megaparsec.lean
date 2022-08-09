@@ -1,10 +1,11 @@
-import Megaparsec.Stream
 import Megaparsec.Errors.StreamErrors
 
-namespace Result
+namespace Megaparsec.Errors.Result
 
-inductive Result (S E A : Type) [s : Stream.Stream S] where
-| ok (x : A)
-| err (e : @StreamErrors.ParseError S E s)
+inductive Result (α E : Type u) where
+| ok (x : α)
+| err (e : StreamErrors.ParseError α E)
+
+export Result (ok err)
 
 end Result

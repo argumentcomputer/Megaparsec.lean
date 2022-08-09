@@ -1,8 +1,15 @@
-import Megaparsec.Stream
 import Megaparsec.Errors.Result
 import Megaparsec.Errors.StreamErrors
 
-namespace ParserState
+import Straume.Coco
+import Straume.Iterator
+
+open Straume.Coco
+open Straume.Iterator
+
+open Megaparsec.Errors.StreamErrors
+
+namespace Megaparsec.ParserState
 
 structure Pos where
   pos : Nat
@@ -12,32 +19,36 @@ structure SourcePos where
   line : Pos
   column: Pos
 
-structure PosState (S : Type u) where
-  input : S
+universe u
+variable {α : Type u}
+variable (s : Type u) [Coco α s] [Iterable α β]
+variable (E : Type u)
+
+structure PosState where
+  input : s
   offset : Nat
   sourcePos : SourcePos
   linePrefix : String
 
-structure State (S E : Type) [s : Stream.Stream S] where
-  input       : S
+structure State where
+  input       : s
   offset      : Nat
-  posState    : @PosState S
-  parseErrors : List (@StreamErrors.ParseError S E s)
+  posState    : PosState s
+  parseErrors : List (ParseError β s)
 
-structure Reply (S E A : Type) [Stream.Stream S] where
-  state    : State S E
+open Megaparsec.Errors.Result in
+structure Reply where
+  state    : @State β s
   consumed : Bool
-  result   : Result.Result S E A
+  result   : Result α E
 
-def longestMatch [Stream.Stream S] (s₁ : State S E) (s₂ : State S E) : State S E :=
+def longestMatch (s₁ : @State β s) (s₂ : @State β s) : @State β s :=
   match compare s₁.offset s₂.offset with
     | Ordering.lt => s₂
     | Ordering.eq => s₂
     | Ordering.gt => s₁
 
-def initialState {S : Type} [stream : Stream.Stream S]
-                 (sourceName : String) (xs : S)
-                 : State S E :=
+def initialState (sourceName : String) (xs : s) : @State β s :=
   let p₀ := Pos.mk 0
   let posState := PosState.mk xs 0 (SourcePos.mk sourceName p₀ p₀) ""
   State.mk xs 0 posState []
