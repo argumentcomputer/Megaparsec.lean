@@ -1,17 +1,19 @@
 import LSpec
-import Megaparsec.Parsec
-import Megaparsec.Common
-import Megaparsec.Errors
-import Megaparsec.Stream
+open LSpec
 
-def unimpl : LSpec :=
-  it "is unimplemented" true $ shouldBe false
+-- import Megaparsec.Parsec
+-- import Megaparsec.Common
+-- import Megaparsec.Errors
+-- import Megaparsec.Stream
 
-instance s2s : ToString String where
-  toString := id
+-- def unimpl : LSpec :=
+--   it "is unimplemented" true $ shouldBe false
 
-def main :=
-  lspec "todo: inspect the state" unimpl
+-- instance s2s : ToString String where
+--   toString := id
+
+-- def main :=
+--   lspec "todo: inspect the state" unimpl
 
 -- def main : IO Unit := do
 --   -- Prove that we can at least parse something.
@@ -26,3 +28,9 @@ def main :=
 --   -- @Parsec.parseTest String (Stream.str) (Errors.ErrorFancy String) String s2s (Common.string "yatima") "yatimaa~"
 --   -- Parsec.parseTest (Common.string "yatima") "yatimaa~"
 --   @Parsec.parseTest String Stream.str String String s2s (@Common.string Option String String Option.instMona "yatima")
+
+def failMe : TestSeq :=
+  test "Tests can't fail" false
+
+def main := lspecIO $
+  failMe
