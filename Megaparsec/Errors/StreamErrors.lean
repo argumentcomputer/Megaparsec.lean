@@ -50,5 +50,3 @@ def refreshLastHint (h : Hints T) (m : Option (ErrorItem T)) : Hints T :=
     | ([], _h) => []
     | (_ :: xs, Option.none) => xs
     | (_ :: xs, Option.some y) => [y] :: xs
-
-end StreamErrors

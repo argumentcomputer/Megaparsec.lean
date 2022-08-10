@@ -1,8 +1,12 @@
 import YatimaStdLib
+import Megaparsec.Pos
+
+open Megaparsec.Pos
 
 namespace Megaparsec.Errors
 
 universe u
+universe v
 variable (β : Type u)
 variable {γ : Type u} [Ord γ] [BEq γ]
 
@@ -13,6 +17,9 @@ inductive ErrorItem where
 | label (l : NEList Char)
 | eof
 
+--                    TODO: make this a set
+--                             |
+--                             v
 abbrev Hints (⅌ : Type u) := List (List (ErrorItem ⅌))
 
 instance ord2beq_ei : BEq (ErrorItem γ) where
@@ -33,4 +40,4 @@ inductive ErrorFancy (E : Type u) where
 | indent (ord : Ordering) (fromPos : Pos) (uptoPos : Pos)
 | custom (e : E)
 
-end Errors
+end Megaparsec.Errors
