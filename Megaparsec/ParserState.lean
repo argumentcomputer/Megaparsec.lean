@@ -40,9 +40,10 @@ structure State (β s : Type u) where
   posState    : PosState s
   parseErrors : List (ParseError β s)
 
+-- TODO: DEPENDENT PARSING IN HIGHER UNIVERSES S S
 /- A result of evaluation of a particular parser. -/
 open Megaparsec.Errors.Result in
-structure Reply (γ : Type v) where
+structure Reply (β s γ E : Type u) where
   state    : @State β s
   consumed : Bool
   result   : Result β γ E

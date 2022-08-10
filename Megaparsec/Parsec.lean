@@ -13,7 +13,6 @@ import YatimaStdLib
 namespace Megaparsec.Parsec
 
 universe u
-universe v
 
 open Megaparsec.ParserState
 open Megaparsec.Errors
@@ -28,28 +27,24 @@ structure Consumed where
 structure Empty where
 
 class Outcome (tag : Type) where
+  make : tag
   consumed? : Bool
 instance : Outcome Consumed where
+  make := Consumed.mk
   consumed? := true
 instance : Outcome Empty where
+  make := Empty.mk
   consumed? := false
 
-/- Adds capability of reporting a successful parse to a monad. -/
-def OkT (m : Type u → Type v) (β s : Type u) (γ : Type v) (ξ : Type u) :=
+def Ok (m : Type f → Type v) (β s γ : Type u) (ξ : Type f) :=
   (γ → State β s → Hints β → m ξ)
 
-/- Adds capability of reporting a failed parse to a monad. -/
-def ErrT (m : Type u → Type v) (β s E : Type u) (ξ : Type u) :=
+def Err (m : Type f → Type v) (β s E : Type u) (ξ : Type f) :=
   (ParseError β E → State β s → m ξ)
 
-/-
-Note: `ParsecT m β s E γ` is the actual `ParsecT` from the previous code base.
-Note: `ParsecT m β s E γ` (note absence of ξ) will have kind `Type u → Type (max u v)`.
-It is perfect to define a monad. -/
-def ParsecT (m : Type u → Type v) (β s E : Type u) (γ : Type v) (ξ : Type u)
-            : Type (max u v) :=
-  let ok := OkT m β s γ ξ
-  let err := ErrT m β s E ξ
+private def doParsecT (m : Type u → Type v) (β s E γ ξ : Type u) :=
+  let ok := Ok m β s γ ξ
+  let err := Err m β s E ξ
   State β s →
     (Consumed × ok) →
     (Consumed × err) →
@@ -57,32 +52,32 @@ def ParsecT (m : Type u → Type v) (β s E : Type u) (γ : Type v) (ξ : Type u
     (Empty × err) →
     m ξ
 
-def runOkT {o : Type} [Outcome o] : (o × OkT m β s γ ) → m ξ :=
-  sorry
+/-
+Note: `ParsecT m β s E γ` is the actual `ParsecT` from the previous code base.
+Note: `ParsecT m β s E γ` (note absence of ξ) will have kind `Type u → Type (max u v)`.
+It is perfect to define a monad. -/
+def ParsecT (m : Type u → Type v) (β s E γ : Type u) :=
+  ∀ (ξ : Type u), doParsecT m β s E γ ξ
+
+def runOk (o : Type) {β s γ E : Type u}
+          [Outcome o] [Monad m] : (o × Ok m β s γ (Reply β s γ E)) :=
+  (Outcome.make, fun y s₁ _ => pure ⟨ s₁, Outcome.consumed? o, .ok y ⟩)
+
+-- TODO: pick two additional letters for unbound module-wise universes
+def runErr (o : Type) {β s γ E : Type u}
+           [Outcome o] [Monad m] : (o × Err m β s E (Reply β s γ E)) :=
+  (Outcome.make, fun err s₁ => pure ⟨ s₁, Outcome.consumed? o, .err err ⟩)
 
 -- TODO: move to Straume
--- instance : Flood Id α where
---   flood x _ := id x
+instance : Flood Id α where
+  flood x _ := id x
 
--- abbrev Parsec := ParsecT Id
+abbrev Parsec := ParsecT Id
 
--- -def runParsecT {E : Type} [s : Stream.Stream S] [m : Monad M] {A : Type}
--- -               (parser : @ParsecT S M E s m A) (s₀: ParserState.State S E)
--- -               : M (ParserState.Reply S E A) :=
-
--- -  let run_cok  := fun a s₁ _h => pure ⟨s₁, true,  .ok a⟩
--- -  let run_cerr := fun err s₁  => pure ⟨s₁, true,  .err err⟩
--- -  let run_eok  := fun a s₁ _h => pure ⟨s₁, false, .ok a⟩
--- -  let run_eerr := fun err s₁  => pure ⟨s₁, false, .err err⟩
-
--- -  parser.unParser (ParserState.Reply S E A) s₀ run_cok run_cerr run_eok run_eerr
-
-def runParsecT {m : Type u → Type v} {β s E : Type u} {γ : Type v} {ξ : Type u}
-               (parser : ParsecT m β s E γ ξ) (s₀ : State β s) :=
-  let run_cok  := fun y (s₁ : @State  β s) _h => pure $ Reply.mk (s₁ : State β s) true (.ok y) -- pure ⟨s₁, true,  .ok y⟩
-  -- let run_cerr := fun err s₁  => pure ⟨s₁, true,  .err err⟩
-  -- let run_eok  := fun y s₁ _h => pure ⟨s₁, false, .ok y⟩
-  -- let run_eerr := fun err s₁  => pure ⟨s₁, false, .err err⟩
-  sorry
+def runParsecT {m : Type u → Type v} {β s E γ : Type u}
+               (parser : ParsecT m β s E γ) (s₀ : State β s) [Monad m] : m (Reply β s γ E) :=
+  parser (Reply β s γ E) s₀
+         (runOk Consumed) (runErr Consumed)
+         (runOk Empty) (runErr Empty)
 
 end Megaparsec.Parsec
