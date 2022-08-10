@@ -3,25 +3,27 @@ import YatimaStdLib
 namespace Megaparsec.Errors
 
 universe u
+variable (β : Type u)
+variable {γ : Type u} [Ord γ] [BEq γ]
 
 /-- Error data types, and ways to bundle those together. -/
 
-inductive ErrorItem (T : Type u) where
-| tokens (t : NEList T)
+inductive ErrorItem where
+| tokens (t : NEList β)
 | label (l : NEList Char)
 | eof
 
-abbrev Hints (T : Type u) := List (List (ErrorItem T))
+abbrev Hints (⅌ : Type u) := List (List (ErrorItem ⅌))
 
-instance ord2beq_ei [Ord T] [BEq T] : BEq (ErrorItem T) where
-  beq (u v : ErrorItem T) :=
-    match u, v with
+instance ord2beq_ei : BEq (ErrorItem γ) where
+  beq (x y : ErrorItem γ) :=
+    match x, y with
     | .tokens nelᵤ, .tokens nelᵥ => NEList.beq nelᵤ nelᵥ
     | .label nelᵤ, .label nelᵥ => NEList.beq nelᵤ nelᵥ
     | .eof, .eof => true
     | _, _ => false
 
-def errorItemMax [Ord T] [BEq T] (e₁ : ErrorItem T) (e₂ : ErrorItem T) : ErrorItem T :=
+def errorItemMax (e₁ : ErrorItem γ) (e₂ : ErrorItem γ) : ErrorItem γ :=
   match BEq.beq e₁ e₂ with
     | true => e₂
     | false => e₁
