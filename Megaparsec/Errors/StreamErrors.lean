@@ -1,19 +1,19 @@
 import Megaparsec.Errors
+import Megaparsec.Errors.ParseError
 import YatimaStdLib
 import Straume.Iterator
+import Megaparsec.Ok
+import Megaparsec.Err
 
 open Straume.Iterator (Iterable)
 open Megaparsec.Errors
+open Megaparsec.Errors.ParseError
+open Megaparsec.Ok
+open Megaparsec.Err
 
 namespace Megaparsec.Errors.StreamErrors
 
 universe u
-
-inductive ParseError (β E : Type u) where
-| trivial (offset: Nat)
-          (unexpected: Option (ErrorItem β))
-          (expected: List (ErrorItem β))
-| fancy (offset: Nat) (expected: List (ErrorFancy E))
 
 def errorOffset (e: ParseError β E) : Nat :=
   match e with

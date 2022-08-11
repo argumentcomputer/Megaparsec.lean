@@ -1,8 +1,10 @@
-import Megaparsec.ParserState
+import Megaparsec.Err
 import Megaparsec.Errors
 import Megaparsec.Errors.Bundle
-import Megaparsec.Errors.StateErrors
-import Megaparsec.Errors.StreamErrors
+-- import Megaparsec.Errors.StateErrors
+-- import Megaparsec.Errors.StreamErrors
+import Megaparsec.Ok
+import Megaparsec.ParserState
 import Straume.Chunk
 import Straume.Coco
 import Straume.Flood
@@ -14,9 +16,11 @@ namespace Megaparsec.Parsec
 
 universe u
 
-open Megaparsec.ParserState
+open Megaparsec.Err
 open Megaparsec.Errors
-open Megaparsec.Errors.StreamErrors
+-- open Megaparsec.Errors.StreamErrors
+open Megaparsec.Ok
+open Megaparsec.ParserState
 
 open Straume.Flood
 open Straume.Chunk
@@ -36,16 +40,10 @@ instance : Outcome Empty where
   make := Empty.mk
   consumed? := false
 
-def Ok (m : Type f → Type v) (β s γ : Type u) (ξ : Type f) :=
-  (γ → State β s → Hints β → m ξ)
-
-def Err (m : Type f → Type v) (β s E : Type u) (ξ : Type f) :=
-  (ParseError β E → State β s → m ξ)
-
-private def doParsecT (m : Type u → Type v) (β s E γ ξ : Type u) :=
-  let ok := Ok m β s γ ξ
-  let err := Err m β s E ξ
-  State β s →
+def ParsecTF (m : Type u → Type v) (β σ E γ ξ : Type u) :=
+  let ok := Ok m β σ γ ξ
+  let err := Err m β σ E ξ
+  State β σ →
     (Consumed × ok) →
     (Consumed × err) →
     (Empty × ok) →
@@ -53,19 +51,18 @@ private def doParsecT (m : Type u → Type v) (β s E γ ξ : Type u) :=
     m ξ
 
 /-
-Note: `ParsecT m β s E γ` is the actual `ParsecT` from the previous code base.
-Note: `ParsecT m β s E γ` (note absence of ξ) will have kind `Type u → Type (max u v)`.
+Note: `ParsecT m β σ E` (note absence of γ) will have kind `Type u → Type (max u v)`.
 It is perfect to define a monad. -/
-def ParsecT (m : Type u → Type v) (β s E γ : Type u) :=
-  ∀ (ξ : Type u), doParsecT m β s E γ ξ
+def ParsecT (m : Type u → Type v) (β σ E γ : Type u) :=
+  ∀ (ξ : Type u), ParsecTF m β σ E γ ξ
 
-def runOk (o : Type) {β s γ E : Type u}
-          [Outcome o] [Monad m] : (o × Ok m β s γ (Reply β s γ E)) :=
+def runOk (o : Type) {β σ γ E : Type u}
+          [Outcome o] [Monad m] : (o × Ok m β σ γ (Reply β σ γ E)) :=
   (Outcome.make, fun y s₁ _ => pure ⟨ s₁, Outcome.consumed? o, .ok y ⟩)
 
 -- TODO: pick two additional letters for unbound module-wise universes
-def runErr (o : Type) {β s γ E : Type u}
-           [Outcome o] [Monad m] : (o × Err m β s E (Reply β s γ E)) :=
+def runErr (o : Type) {β σ γ E : Type u}
+           [Outcome o] [Monad m] : (o × Err m β σ E (Reply β σ γ E)) :=
   (Outcome.make, fun err s₁ => pure ⟨ s₁, Outcome.consumed? o, .err err ⟩)
 
 -- TODO: move to Straume
@@ -74,10 +71,52 @@ instance : Flood Id α where
 
 abbrev Parsec := ParsecT Id
 
-def runParsecT {m : Type u → Type v} {β s E γ : Type u}
-               (parser : ParsecT m β s E γ) (s₀ : State β s) [Monad m] : m (Reply β s γ E) :=
-  parser (Reply β s γ E) s₀
+def runParsecT {m : Type u → Type v} {β σ E γ : Type u}
+               (parser : ParsecT m β σ E γ) (s₀ : State β σ) [Monad m] : m (Reply β σ γ E) :=
+  parser (Reply β σ γ E) s₀
          (runOk Consumed) (runErr Consumed)
          (runOk Empty) (runErr Empty)
 
-end Megaparsec.Parsec
+/- Pure doesn't consume. -/
+instance : Pure (ParsecT m β σ E) where
+  pure x := fun _ s _ _ ((_ : Empty), f) _ => f x s []
+
+/- Map over happy paths. -/
+instance : Functor (ParsecT m β σ E) where
+  map φ ta :=
+    -- TODO: use projections to update under composition in a less verbose way
+    fun xi s ((_: Consumed), f) cerr ((_: Empty), g) eerr =>
+      ta xi s (Consumed.mk, (f ∘ φ)) cerr (Empty.mk, (g ∘ φ)) eerr
+
+/- Bind into the happy path, accumulating hints about errors. -/
+instance : Bind (ParsecT m β σ E) where
+  bind ta φ :=
+    fun xi s ((_: Consumed), f) ((_ : Consumed), fe) ((_ : Empty), g) ((_ : Empty), ge) =>
+
+      let mok ψ ψe x s' hs :=
+        (φ x) xi s'
+              (Consumed.mk, f)
+              (Consumed.mk, fe)
+              (Empty.mk, accHints hs ψ)
+              (Empty.mk, withHints hs ψe)
+
+      ta xi s (Consumed.mk, (mok f fe)) (Consumed.mk, fe) (Empty.mk, (mok g ge)) (Empty.mk, ge)
+
+instance : Seq (ParsecT m β σ E) where
+  seq tφ thunk :=
+    fun xi s ((_ : Consumed), f) ((_ : Consumed), fe) ((_ : Empty), g) ((_ : Empty), ge) =>
+
+      let mok ψ ψe x s' hs :=
+        (thunk ()) xi s'
+                   (Consumed.mk, f ∘ x)
+                   (Consumed.mk, fe)
+                   (Empty.mk, accHints hs (ψ ∘ x))
+                   (Empty.mk, withHints hs ψe)
+
+      tφ xi s
+         (Consumed.mk, mok f fe)
+         (Consumed.mk, fe)
+         (Empty.mk, mok g ge)
+         (Empty.mk, ge)
+
+instance : Monad (ParsecT m β σ E) := {}

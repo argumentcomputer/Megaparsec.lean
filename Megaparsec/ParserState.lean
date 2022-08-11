@@ -1,11 +1,11 @@
 import Megaparsec.Errors.Result
-import Megaparsec.Errors.StreamErrors
+import Megaparsec.Errors.ParseError
 import Megaparsec.Pos
 
 import Straume.Coco
 import Straume.Iterator
 
-open Megaparsec.Errors.StreamErrors
+open Megaparsec.Errors.ParseError
 open Megaparsec.Pos
 
 open Straume.Coco

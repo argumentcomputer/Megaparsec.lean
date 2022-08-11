@@ -1,11 +1,11 @@
-import Megaparsec.Errors.StreamErrors
+import Megaparsec.Errors.ParseError
 import Megaparsec.ParserState
 import YatimaStdLib
 
 namespace Bundle
 
 open Megaparsec.ParserState
-open Megaparsec.Errors.StreamErrors
+open Megaparsec.Errors.ParseError
 
 structure ParseErrorBundle {α E : Type u} where
   errors : NEList (ParseError α E)
