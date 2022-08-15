@@ -84,39 +84,42 @@ instance : Pure (ParsecT m β σ E) where
 /- Map over happy paths. -/
 instance : Functor (ParsecT m β σ E) where
   map φ ta :=
-    -- TODO: use projections to update under composition in a less verbose way
-    fun xi s ((_: Consumed), f) cerr ((_: Empty), g) eerr =>
-      ta xi s (Consumed.mk, (f ∘ φ)) cerr (Empty.mk, (g ∘ φ)) eerr
+    fun xi s cok cerr eok eerr =>
+      ta xi s (cok.1, (cok.2 ∘ φ)) cerr (eok.1, (eok.2 ∘ φ)) eerr
 
 /- Bind into the happy path, accumulating hints about errors. -/
+-- TODO: use functors over (x, y) to update parsecs.
 instance : Bind (ParsecT m β σ E) where
   bind ta φ :=
-    fun xi s ((_: Consumed), f) ((_ : Consumed), fe) ((_ : Empty), g) ((_ : Empty), ge) =>
+    fun xi s cok cerr eok eerr =>
 
       let mok ψ ψe x s' hs :=
         (φ x) xi s'
-              (Consumed.mk, f)
-              (Consumed.mk, fe)
-              (Empty.mk, accHints hs ψ)
-              (Empty.mk, withHints hs ψe)
+              cok
+              cerr
+              (eok.1, accHints hs ψ)
+              (eerr.1, withHints hs ψe)
 
-      ta xi s (Consumed.mk, (mok f fe)) (Consumed.mk, fe) (Empty.mk, (mok g ge)) (Empty.mk, ge)
+      ta xi s (cok.1, (mok cok.2 cerr.2))
+              cerr
+              (eok.1, (mok eok.2 eerr.2))
+              eerr
 
 instance : Seq (ParsecT m β σ E) where
   seq tφ thunk :=
-    fun xi s ((_ : Consumed), f) ((_ : Consumed), fe) ((_ : Empty), g) ((_ : Empty), ge) =>
+    fun xi s cok cerr eok eerr =>
 
       let mok ψ ψe x s' hs :=
         (thunk ()) xi s'
-                   (Consumed.mk, f ∘ x)
-                   (Consumed.mk, fe)
-                   (Empty.mk, accHints hs (ψ ∘ x))
-                   (Empty.mk, withHints hs ψe)
+                   (cok.1, cok.2 ∘ x)
+                   cerr
+                   (eok.1, accHints hs (ψ ∘ x))
+                   (eerr.1, withHints hs ψe)
 
       tφ xi s
-         (Consumed.mk, mok f fe)
-         (Consumed.mk, fe)
-         (Empty.mk, mok g ge)
-         (Empty.mk, ge)
+         (Consumed.mk, mok cok.2 cerr.2)
+         cerr
+         (Empty.mk, mok eok.2 eerr.2)
+         eerr
 
 instance : Monad (ParsecT m β σ E) := {}
