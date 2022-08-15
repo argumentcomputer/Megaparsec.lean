@@ -20,8 +20,22 @@ def errorOffset (e: ParseError β E) : Nat :=
     | ParseError.trivial n _ _ => n
     | ParseError.fancy n _     => n
 
-def mergeError (e₁: ParseError β E)
-               (e₂: ParseError β E) [Ord β] : ParseError β E :=
+/- Merge errors produced by alternative parsers.
+Strategy:
+
+1. If the errors have the same offset, keep fancy.
+2. If both are fancy, merge the collections of ErrorFancy in each.
+3. If both are trivial carrying some information, pick one based on the optional eiMax funciton.
+   The first one is picked by default.
+2. Otherwise, discard the error with the lowest offset.
+   It doesn't matter, because the alternative choice of parsers is eager.
+
+
+The error with the state with the longest match is topped with the messages from the "shortest" state.
+The error with the "shortest" state is discarded. -/
+def mergeErrors (e₁: ParseError β E)
+                (e₂: ParseError β E)
+                (eiMax : ErrorItem β → ErrorItem β → ErrorItem β := fun x _ => x) : ParseError β E :=
   match (compare (errorOffset e₁) (errorOffset e₂)) with
     | Ordering.lt => e₂
     | Ordering.eq =>
@@ -29,7 +43,7 @@ def mergeError (e₁: ParseError β E)
           | (ParseError.trivial s₁ u₁ p₁, .trivial _ u₂ p₂) =>
              match (u₁, u₂) with
                | (.none, .none) => .trivial s₁ .none (p₁ ++ p₂)
-               | (.some x, .some y) => .trivial s₁ (.some (errorItemMax x y)) (p₁ ++ p₂)
+               | (.some x, .some y) => .trivial s₁ (.some (eiMax x y)) (p₁ ++ p₂)
                | (.none, .some x) => .trivial s₁ (.some x) (p₁ ++ p₂)
                | (.some x, .none)=> .trivial s₁ (.some x) (p₁ ++ p₂)
           | (.fancy _ _, .trivial _ _ _) => e₁

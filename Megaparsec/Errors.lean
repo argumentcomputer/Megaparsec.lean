@@ -7,12 +7,10 @@ namespace Megaparsec.Errors
 
 universe u
 universe v
-variable (β : Type u)
-variable {γ : Type u} [Ord γ] [BEq γ]
 
 /-- Error data types, and ways to bundle those together. -/
 
-inductive ErrorItem where
+inductive ErrorItem (β : Type u) where
 | tokens (t : NEList β)
 | label (l : NEList Char)
 | eof
@@ -22,6 +20,8 @@ inductive ErrorItem where
 --                             v
 abbrev Hints (⅌ : Type u) := List (List (ErrorItem ⅌))
 
+variable {γ : Type u} [Ord γ] [BEq γ]
+
 instance ord2beq_ei : BEq (ErrorItem γ) where
   beq (x y : ErrorItem γ) :=
     match x, y with
@@ -29,11 +29,6 @@ instance ord2beq_ei : BEq (ErrorItem γ) where
     | .label nelᵤ, .label nelᵥ => NEList.beq nelᵤ nelᵥ
     | .eof, .eof => true
     | _, _ => false
-
-def errorItemMax (e₁ : ErrorItem γ) (e₂ : ErrorItem γ) : ErrorItem γ :=
-  match BEq.beq e₁ e₂ with
-    | true => e₂
-    | false => e₁
 
 inductive ErrorFancy (E : Type u) where
 | fail (msg : String)

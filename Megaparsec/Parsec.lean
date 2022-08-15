@@ -1,6 +1,7 @@
 import Megaparsec.Err
 import Megaparsec.Errors
 import Megaparsec.Errors.Bundle
+import Megaparsec.Errors.StreamErrors
 -- import Megaparsec.Errors.StateErrors
 -- import Megaparsec.Errors.StreamErrors
 import Megaparsec.Ok
@@ -33,6 +34,7 @@ structure Empty where
 class Outcome (tag : Type) where
   make : tag
   consumed? : Bool
+  U : tag → tag → tag := fun x _ => x
 instance : Outcome Consumed where
   make := Consumed.mk
   consumed? := true
@@ -89,6 +91,7 @@ instance : Functor (ParsecT m β σ E) where
 
 /- Bind into the happy path, accumulating hints about errors. -/
 -- TODO: use functors over (x, y) to update parsecs.
+open Outcome in
 instance : Bind (ParsecT m β σ E) where
   bind ta φ :=
     fun xi s cok cerr eok eerr =>
@@ -100,11 +103,12 @@ instance : Bind (ParsecT m β σ E) where
               (eok.1, accHints hs ψ)
               (eerr.1, withHints hs ψe)
 
-      ta xi s (cok.1, (mok cok.2 cerr.2))
+      ta xi s (U cok.1 cerr.1, mok cok.2 cerr.2)
               cerr
-              (eok.1, (mok eok.2 eerr.2))
+              (U eok.1 eerr.1, mok eok.2 eerr.2)
               eerr
 
+open Outcome in
 instance : Seq (ParsecT m β σ E) where
   seq tφ thunk :=
     fun xi s cok cerr eok eerr =>
@@ -117,9 +121,25 @@ instance : Seq (ParsecT m β σ E) where
                    (eerr.1, withHints hs ψe)
 
       tφ xi s
-         (Consumed.mk, mok cok.2 cerr.2)
+         (U cok.1 cerr.1, mok cok.2 cerr.2)
          cerr
-         (Empty.mk, mok eok.2 eerr.2)
+         (U eok.1 eerr.1, mok eok.2 eerr.2)
          eerr
 
 instance : Monad (ParsecT m β σ E) := {}
+
+/- Second-biased way to return a state with the most processed tokens. -/
+def longestMatch (s₀ : State β α) (s₁ : State β α) : State β α :=
+  if s₀.offset > s₁.offset then s₀ else s₁
+
+open StreamErrors in
+open Outcome in
+instance : Alternative (ParsecT m β σ E) where
+  failure := fun _ s _ _ _ eerr => eerr.2 (.trivial s.offset Option.none []) s
+  orElse guess thunk :=
+    fun xi s cok cerr eok eerr =>
+      let fallback err ms :=
+        let nge ψ err' s' := ψ (mergeErrors err' err) (longestMatch ms s')
+        let ng x s' hs := eok.2 x s' (toHints s'.offset err ++ hs)
+        (thunk ()) xi s cok (cerr.1, nge cerr.2) (eok.1, ng) (eerr.1, nge eerr.2)
+    guess xi s cok cerr eok (eerr.1, fallback)
