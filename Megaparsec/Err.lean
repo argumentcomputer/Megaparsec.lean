@@ -9,7 +9,7 @@ open Megaparsec.ParserState
 namespace Megaparsec.Err
 
 def Err (m : Type f → Type v) (β σ E : Type u) (ξ : Type f) :=
-  (ParseError β E → State β σ → m ξ)
+  (ParseError β E → State β σ E → m ξ)
 
 /-
 `withHints hs c` adds hints to “ERROR” continuation that will add given

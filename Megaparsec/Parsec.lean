@@ -6,6 +6,7 @@ import Megaparsec.Errors.StreamErrors
 -- import Megaparsec.Errors.StreamErrors
 import Megaparsec.Ok
 import Megaparsec.ParserState
+import Straume
 import Straume.Chunk
 import Straume.Coco
 import Straume.Flood
@@ -23,10 +24,12 @@ open Megaparsec.Errors
 open Megaparsec.Ok
 open Megaparsec.ParserState
 
+open Straume
 open Straume.Flood
 open Straume.Chunk
 open Straume.Coco
-open Straume.Iterator
+open Straume.Iterator (Iterable)
+open Straume.Iterator renaming Bijection → Iterable.Bijection
 
 structure Consumed where
 structure Empty where
@@ -43,9 +46,9 @@ instance : Outcome Empty where
   consumed? := false
 
 def ParsecTF (m : Type u → Type v) (β σ E γ ξ : Type u) :=
-  let ok := Ok m β σ γ ξ
+  let ok := Ok m β σ E γ ξ
   let err := Err m β σ E ξ
-  State β σ →
+  State β σ E →
     (Consumed × ok) →
     (Consumed × err) →
     (Empty × ok) →
@@ -59,7 +62,7 @@ def ParsecT (m : Type u → Type v) (β σ E γ : Type u) :=
   ∀ (ξ : Type u), ParsecTF m β σ E γ ξ
 
 def runOk (o : Type) {β σ γ E : Type u}
-          [Outcome o] [Monad m] : (o × Ok m β σ γ (Reply β σ γ E)) :=
+          [Outcome o] [Monad m] : (o × Ok m β σ E γ (Reply β σ γ E)) :=
   (Outcome.make, fun y s₁ _ => pure ⟨ s₁, Outcome.consumed? o, .ok y ⟩)
 
 -- TODO: pick two additional letters for unbound module-wise universes
@@ -74,7 +77,7 @@ instance : Flood Id α where
 abbrev Parsec := ParsecT Id
 
 def runParsecT {m : Type u → Type v} {β σ E γ : Type u}
-               (parser : ParsecT m β σ E γ) (s₀ : State β σ) [Monad m] : m (Reply β σ γ E) :=
+               (parser : ParsecT m β σ E γ) (s₀ : State β σ E) [Monad m] : m (Reply β σ γ E) :=
   parser (Reply β σ γ E) s₀
          (runOk Consumed) (runErr Consumed)
          (runOk Empty) (runErr Empty)
@@ -129,7 +132,7 @@ instance : Seq (ParsecT m β σ E) where
 instance : Monad (ParsecT m β σ E) := {}
 
 /- Second-biased way to return a state with the most processed tokens. -/
-def longestMatch (s₀ : State β α) (s₁ : State β α) : State β α :=
+def longestMatch (s₀ : State β σ E) (s₁ : State β σ E) : State β σ E :=
   if s₀.offset > s₁.offset then s₀ else s₁
 
 open StreamErrors in
@@ -143,3 +146,68 @@ instance : Alternative (ParsecT m β σ E) where
         let ng x s' hs := eok.2 x s' (toHints s'.offset err ++ hs)
         (thunk ()) xi s cok (cerr.1, nge cerr.2) (eok.1, ng) (eerr.1, nge eerr.2)
     guess xi s cok cerr eok (eerr.1, fallback)
+
+---=========================================================--
+---================= IMPORTANT FUNCTIONS ===================--
+---=========================================================--
+
+open Megaparsec.Errors.Bundle
+
+/- Extracts the end result from ParsecT run and presents it as a tuple under inner monad. -/
+def runParserT' {m : Type u → Type v} {β σ E γ : Type u}
+                (p : ParsecT m β σ E γ) (s₀ : State β σ E) [Monad m]
+                : m (State β σ E × (Either (ParseErrorBundle β σ E) γ)) := do
+  let reply ← runParsecT p s₀
+  let s₁ := reply.state
+  pure $
+    match reply.result with
+    | .ok x =>
+      match NEList.nonEmpty $ s₁.parseErrors with
+      | .none => (s₁, Either.right x)
+      | .some pes => (s₁, .left $ toBundle s₀ pes)
+    | .err e => (s₁, .left (toBundle s₀ $ List.toNEList e s₁.parseErrors))
+
+/- Extracts the end result from Parsec run and presents it as a tuple as is (under Id monad). -/
+def runParserS (p : Parsec β σ E γ) (s₀ : State β σ E) :=
+  runParserT' p s₀
+
+/- Finally parse something out of a Parsec.
+Works over some polymorphic input type `σ`. -/
+def runParserP (p : Parsec β σ E γ) (srcName : String) (xs : σ) :=
+  (runParserS p (initialState srcName xs)).2
+
+/- Synonym for `runParserP`. -/
+def parseP (p : Parsec β σ E γ) (srcName : String) (xs : σ) :=
+  runParserP p srcName xs
+
+/- Test some parser polymorphically. -/
+def parseTestP (p : Parsec β σ E γ) (xs : σ) [ToString γ]
+               : IO (Bool × Either Unit γ) :=
+  match parseP p "" xs with
+  -- TODO: Learn to print errors!
+  | .left _e => IO.println "There were some errors." >>= fun _ => pure $ (false, Either.left ())
+  | .right y => IO.println y >>= fun _ => pure $ (true, Either.right y)
+
+/- Extracts the end result from ParsecT over a stream.
+This is a "decorative" wrapper around generic runParserT'. -/
+def runParserT (p : ParsecT m β ℘ E γ) (s₀ : State β ℘ E)
+               [Monad m] [@Straume m ℘ Chunk α β] [Iterable α β] [Iterable.Bijection β α] :=
+  runParserT' p s₀
+
+/- Finally parse something out of a Parsec over a stream.
+Works over some stream `σ`.
+This is a "decorative" wrapper around generic runParserP -/
+def runParser (p : Parsec β ℘ E γ) (srcName : String) (xs : ℘)
+              [Monad m] [@Straume m ℘ Chunk α β] [Iterable α β] [Iterable.Bijection β α] :=
+  runParserP p srcName
+
+/- Synonym for `runParser`. -/
+def parse (p : Parsec β ℘ E γ) (srcName : String) (xs : ℘)
+          [Monad m] [@Straume m ℘ Chunk α β] [Iterable α β] [Iterable.Bijection β α] :=
+  @runParser β ℘ E γ m α p srcName xs
+
+/- Test some parser over stream.
+This is a "decorative" wrapper around generic parseTestP. -/
+def parseTest (p : Parsec β σ E γ) (xs : σ) [ToString γ]
+              [Monad m] [@Straume m ℘ Chunk α β] [Iterable α β] [Iterable.Bijection β α] :=
+  parseTestP p xs
