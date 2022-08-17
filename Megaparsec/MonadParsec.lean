@@ -1,12 +1,23 @@
 import Megaparsec.Errors
 import Megaparsec.Errors.ParseError
+import Megaparsec.Errors.StreamErrors
+import Megaparsec.Parsec
 import Megaparsec.ParserState
+import Straume
+import Straume.Chunk
+import Straume.Iterator
 
 import YatimaStdLib
 
 open Megaparsec.Errors
 open Megaparsec.Errors.ParseError
+open Megaparsec.Errors.StreamErrors
+open Megaparsec.Parsec
 open Megaparsec.ParserState
+open Straume
+open Straume.Chunk
+open Straume.Iterator (Iterable)
+open Straume.Iterator renaming Bijection → Iterable.Bijection
 
 namespace MonadParsec
 
@@ -20,7 +31,7 @@ class MonadParsec (m : Type u → Type v) (α β ℘ E : outParam (Type u)) wher
   /- If `m γ` consumed no input, replace the names of expected tokens with `nameOverride`. -/
   label (nameOverride : String) : m γ → m γ
   /- Hides expected token error messages when `m γ` fails. -/
-  hidden : m γ → m γ
+  hidden (p : m γ) : m γ := label "" p
   /- Attempts to parse with `m γ` and backtrack on failure.
   Used for arbitrary look-ahead.
   Consult megaparsec docs for pitfalls:
@@ -88,3 +99,55 @@ class MonadParsec (m : Type u → Type v) (α β ℘ E : outParam (Type u)) wher
   getParserState : m (State β ℘ E)
   /- Ditto. -/
   updateParserState : (State β ℘ E → State β ℘ E) → m PUnit
+
+instance theInstance {m : Type u → Type v} {α β σ E : Type u}
+                     [Monad m] [Iterable α β] [Iterable.Bijection β α] [@Straume m σ Chunk α β]
+                     : MonadParsec (ParsecT m β σ E) α β σ E where
+  parseError e := fun _xi s _cok _cerr _eok eerr => eerr.2 e s
+  label l p := fun xi s cok cerr eok eerr =>
+    let el := Option.map ErrorItem.label (NEList.nonEmptyString l)
+    let f x s' hs :=
+      match el with
+      | .none => cok.2 x s' $ refreshLastHint hs .none
+      | .some _ => cok.2 x s' hs
+    let g x s' hs :=
+      eok.2 x s' $ refreshLastHint hs el
+    let ge err := eerr.2 $
+      match err with
+      | ParseError.trivial pos us _ => .trivial pos us (Option.option [] (fun x => [x]) el)
+      | _ => err
+    p xi s (cok.1, f) cerr (eok.1, g) (eerr.1, ge)
+  attempt p := fun xi s cok _ eok eerr =>
+    let forceBacktrack e _ := eerr.2 e s
+    p xi s cok (Consumed.mk, forceBacktrack) eok (Empty.mk, forceBacktrack)
+  lookAhead p := fun xi s _ cerr eok eerr =>
+    let forceBacktrack x _ _ := eok.2 x s [] -- TODO: why not forward hints?
+    p xi s (Consumed.mk, forceBacktrack) cerr (Empty.mk, forceBacktrack) eerr
+  notFollowedBy p := fun xi s _ _ eok eerr => do
+    let o := s.offset
+    let y : (Chunk β × σ) ← Straume.take1 α s.input
+    let c2e := ErrorItem.tokens ∘ NEList.uno
+    let subject : ErrorItem β := match y.1 with
+    | .nil => ErrorItem.eof -- If by the time we call notFollowedBy the stream is empty, treat it as eof.
+    | .cont c => c2e c
+    | .fin (c, _reason) => c2e c -- It's ok to work with .fin, because we never consume.
+    let unexpect u := ParseError.trivial o (.some u) []
+    let ok _ _ _ := eerr.2 (unexpect subject) s
+    let err _ _ := eok.2 PUnit.unit s []
+    p xi s (Consumed.mk, ok) (Consumed.mk, err) (Empty.mk, ok) (Empty.mk, err)
+  withRecovery φ p := fun xi s cok cerr eok eerr =>
+    let hs' s' e := toHints (State.offset s') e
+    let err (fHs := fun _ _ => []) e sFail :=
+      let ok hs ψ := fun x s' _hs => ψ x s' (hs' s' e)
+      let err _ _ := cerr.2 e sFail
+      (φ e) xi sFail (cok.1, ok fHs cok.2) (Consumed.mk, err) (eok.1, ok hs' eok.2) (Empty.mk, err)
+    p xi s cok (Consumed.mk, err) eok (Empty.mk, err hs')
+  observing := sorry
+  eof := sorry
+  token := sorry
+  tokens := sorry
+  takeWhileP := sorry
+  takeWhile1P := sorry
+  takeP := sorry
+  getParserState := sorry
+  updateParserState := sorry

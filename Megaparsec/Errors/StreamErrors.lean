@@ -59,8 +59,8 @@ def toHints (streamPos : Nat) (e : ParseError α E) : Hints α :=
            then (if List.isEmpty ps then [] else [ps])
            else []
 
-def refreshLastHint (h : Hints T) (m : Option (ErrorItem T)) : Hints T :=
-  match (h,m) with
+def refreshLastHint (h : Hints β) (m : Option (ErrorItem β)) : Hints β :=
+  match (h, m) with
     | ([], _h) => []
-    | (_ :: xs, Option.none) => xs
-    | (_ :: xs, Option.some y) => [y] :: xs
+    | (_ :: xs, .none) => xs
+    | (_ :: xs, .some y) => [y] :: xs
