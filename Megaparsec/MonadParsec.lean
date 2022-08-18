@@ -100,6 +100,12 @@ class MonadParsec (m : Type u → Type v) (α β ℘ E : outParam (Type u)) wher
   /- Ditto. -/
   updateParserState : (State β ℘ E → State β ℘ E) → m PUnit
 
+universe u
+universe v
+
+private def hs₀ (β σ E : Type u) (_ : State β σ E) (_ : ParseError β E) : Hints β := []
+private def hs' (β σ E : Type u) (s' : State β σ E) (e : ParseError β E) := toHints (State.offset s') e
+
 instance theInstance {m : Type u → Type v} {α β σ E : Type u}
                      [Monad m] [Iterable α β] [Iterable.Bijection β α] [@Straume m σ Chunk α β]
                      : MonadParsec (ParsecT m β σ E) α β σ E where
@@ -136,13 +142,14 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
     let err _ _ := eok.2 PUnit.unit s []
     p xi s (Consumed.mk, ok) (Consumed.mk, err) (Empty.mk, ok) (Empty.mk, err)
   withRecovery φ p := fun xi s cok cerr eok eerr =>
-    let hs' s' e := toHints (State.offset s') e
-    let err (fHs := fun _ _ => []) e sFail :=
-      let ok hs ψ := fun x s' _hs => ψ x s' (hs' s' e)
+    let err (fHs := (hs₀ β σ E)) e sFail :=
+      let ok ψ := fun x s' _hs => ψ x s' (fHs s' e)
       let err _ _ := cerr.2 e sFail
-      (φ e) xi sFail (cok.1, ok fHs cok.2) (Consumed.mk, err) (eok.1, ok hs' eok.2) (Empty.mk, err)
-    p xi s cok (Consumed.mk, err) eok (Empty.mk, err hs')
-  observing := sorry
+      (φ e) xi sFail (cok.1, ok cok.2) (Consumed.mk, err) (eok.1, ok eok.2) (Empty.mk, err)
+    p xi s cok (Consumed.mk, err) eok (Empty.mk, err $ hs' β σ E)
+  observing p := fun xi s cok cerr eok eerr =>
+    let err (fHs := (hs₀ β σ E)) e s' := cok.2 (.left e) s' (fHs s' e)
+    p xi s (cok.1, cok.2 ∘ .right) (Consumed.mk, err) (eok.1, eok.2 ∘ .right) (Empty.mk, err (hs' β σ E))
   eof := sorry
   token := sorry
   tokens := sorry
