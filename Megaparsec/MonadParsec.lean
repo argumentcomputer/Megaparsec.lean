@@ -94,7 +94,7 @@ class MonadParsec (m : Type u → Type v) (α β ℘ E : outParam (Type u)) wher
 
   `takeP .none n` = `count n anySingle`.
   -/
-  takeP : Option String → n → m α
+  takeP : Option String → Nat → m α
   /- Ditto. -/
   getParserState : m (State β ℘ E)
   /- Ditto. -/
@@ -219,7 +219,6 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
     -- TODO: This is COPY PASTA!
 
   takeWhile1P ol ρ := fun xi s cok cerr eok eerr => do
-    let y : (Chunk α × σ) ← Straume.takeWhile ρ s.input
     let el : Option (ErrorItem β) := -- TODO: why doesn't `ErrorItem.label <$> (ol >>= NEList.nonEmptyString)` work?!
       match ol with
       | .none => .none
@@ -248,6 +247,7 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
           eerr.2 (.trivial s.offset (got c) want) s
       else
         cok.2 cs {s with offset := s.offset + n, input := y.2} hs
+    let y : (Chunk α × σ) ← Straume.takeWhile ρ s.input
     match y.1 with
     | .nil =>
       let got := .some ErrorItem.eof
@@ -255,6 +255,36 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
     | .cont cs => res cs
     | .fin (cs, _) => res cs
 
-  takeP := sorry
-  getParserState := sorry
-  updateParserState := sorry
+  takeP ol n := fun xi s cok cerr eok eerr => do
+    -- TODO: Copypasta
+    let el : Option (ErrorItem β) := -- TODO: why doesn't `ErrorItem.label <$> (ol >>= NEList.nonEmptyString)` work?!
+      match ol with
+      | .none => .none
+      | .some ll => match NEList.nonEmptyString ll with
+        | .none => .none
+        | .some lll => .some $ ErrorItem.label lll
+    let hs : Hints β := -- el >>= ( (List.concat []) ∘ (List.concat []) )
+      match el with
+      | .none => []
+      | .some ell => [[ell]]
+    let want := -- (Option.option [] ((List.concat []) <$> el))
+      match hs with
+      | [] => []
+      | x :: rest => x
+    let y : (Chunk α × σ) ← Straume.takeN n s.input
+    let ok cs := cok.2 cs {s with offset := s.offset + n, input := y.2} hs
+    match y.1 with
+    | .nil => eerr.2 (.trivial s.offset (.some ErrorItem.eof) want) s
+    | .cont cs => ok cs
+    | .fin (cs, _) =>
+      let len := (Iterable.length cs)
+      if len ≠ n then
+        eerr.2 (.trivial (s.offset + len) (.some ErrorItem.eof) want) s
+      else
+        ok cs
+
+  getParserState := fun _ s _ _ eok _ =>
+    eok.2 s s []
+
+  updateParserState φ := fun _ s _ _ eok _ =>
+    eok.2 PUnit.unit (φ s) []
