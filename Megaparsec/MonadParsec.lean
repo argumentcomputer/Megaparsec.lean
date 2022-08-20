@@ -151,18 +151,18 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
     let err _ _ := eok.2 PUnit.unit s []
     p xi s (Consumed.mk, ok) (Consumed.mk, err) (Empty.mk, ok) (Empty.mk, err)
 
-  withRecovery φ p := fun xi s cok cerr eok eerr =>
+  withRecovery φ p := fun xi s cok cerr eok _ =>
     let err (fHs := (hs₀ β σ E)) e sFail :=
       let ok ψ := fun x s' _hs => ψ x s' (fHs s' e)
       let err _ _ := cerr.2 e sFail
       (φ e) xi sFail (cok.1, ok cok.2) (Consumed.mk, err) (eok.1, ok eok.2) (Empty.mk, err)
     p xi s cok (Consumed.mk, err) eok (Empty.mk, err $ hs' β σ E)
 
-  observing p := fun xi s cok cerr eok eerr =>
+  observing p := fun xi s cok _ eok _ =>
     let err (fHs := (hs₀ β σ E)) e s' := cok.2 (.left e) s' (fHs s' e)
     p xi s (cok.1, cok.2 ∘ .right) (Consumed.mk, err) (eok.1, eok.2 ∘ .right) (Empty.mk, err (hs' β σ E))
 
-  eof := fun xi s _ _ eok eerr => do
+  eof := fun _ s _ _ eok eerr => do
       let y : (Chunk β × σ) ← Straume.take1 α s.input
       let err c := eerr.2 (.trivial s.offset (.some $ ErrorItem.tokens $ NEList.uno c) ([.eof])) s
       match y.1 with
@@ -170,7 +170,7 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
       | .cont c => err c
       | .fin (c, _) => err c
 
-  token ρ errorCtx := fun xi s cok cerr eok eerr => do
+  token ρ errorCtx := fun _ s cok _ _ eerr => do
     -- TODO: Uhh, if y : γ, then we should really not call these variables "y"
     -- In reality, they are cctx ot csctx.
     let y : (Chunk β × σ) ← Straume.take1 α s.input
@@ -183,7 +183,7 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
     | .cont c => test c
     | .fin (c, _) => test c
 
-  tokens f l := fun xi s cok cerr eok eerr => do
+  tokens f l := fun _ s cok _ eok eerr => do
     let n : Nat := Iterable.length l
     let y : (Chunk α × σ) ← Straume.takeN n s.input
     let unexpect pos' u :=
@@ -206,7 +206,7 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
     | .cont cs => test cs
     | .fin (cs, _) => test cs
 
-  takeWhileP ol ρ := fun xi s cok cerr eok eerr => do
+  takeWhileP ol ρ := fun _ s cok _ eok _ => do
     let y : (Chunk α × σ) ← Straume.takeWhile ρ s.input
     let hs := match ol >>= NEList.nonEmptyString with
     | .none => []
@@ -218,7 +218,7 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
     | .fin (cs, _) => cok.2 cs  {s with input := y.2, offset := s.offset + Iterable.length cs} hs -- TODO: Why hs, not [] ?
     -- TODO: This is COPY PASTA!
 
-  takeWhile1P ol ρ := fun xi s cok cerr eok eerr => do
+  takeWhile1P ol ρ := fun _ s cok _ _ eerr => do
     let el : Option (ErrorItem β) := -- TODO: why doesn't `ErrorItem.label <$> (ol >>= NEList.nonEmptyString)` work?!
       match ol with
       | .none => .none
@@ -232,8 +232,8 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
     let want := -- (Option.option [] ((List.concat []) <$> el))
       match hs with
       | [] => []
-      | x :: rest => x
-    let res cs := do
+      | x :: _ => x
+    let res cs y := do
       let n := Iterable.length cs
       if (n == 0) then
         let yb : (Chunk β × σ) ← (Straume.take1 α s.input)
@@ -252,10 +252,10 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
     | .nil =>
       let got := .some ErrorItem.eof
       eerr.2 (.trivial s.offset got want) s
-    | .cont cs => res cs
-    | .fin (cs, _) => res cs
+    | .cont cs => res cs y
+    | .fin (cs, _) => res cs y
 
-  takeP ol n := fun xi s cok cerr eok eerr => do
+  takeP ol n := fun _ s cok _ _ eerr => do
     -- TODO: Copypasta
     let el : Option (ErrorItem β) := -- TODO: why doesn't `ErrorItem.label <$> (ol >>= NEList.nonEmptyString)` work?!
       match ol with
@@ -270,7 +270,7 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
     let want := -- (Option.option [] ((List.concat []) <$> el))
       match hs with
       | [] => []
-      | x :: rest => x
+      | x :: _ => x
     let y : (Chunk α × σ) ← Straume.takeN n s.input
     let ok cs := cok.2 cs {s with offset := s.offset + n, input := y.2} hs
     match y.1 with
