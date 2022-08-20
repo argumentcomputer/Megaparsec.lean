@@ -26,7 +26,7 @@ namespace MonadParsec
 
 /- Monads m that implement primitive parsers.
 Thus, you see `m γ`, read it "parser m-gamma".  -/
-class MonadParsec (m : Type u → Type v) (α β ℘ E : outParam (Type u)) where
+class MonadParsec (m : Type u → Type v) (℘ α : Type u) (β E : outParam (Type u)) where
   /- Stop parsing wherever we are, and report ParseError. -/
   parseError : ParseError β E → m γ
   /- If `m γ` consumed no input, replace the names of expected tokens with `nameOverride`. -/
@@ -111,7 +111,7 @@ private def nelstr (x : Char) (xs : String) := match NEList.nonEmptyString xs wi
 
 instance theInstance {m : Type u → Type v} {α β σ E : Type u}
                      [Monad m] [Iterable α β] [Iterable.Bijection β α] [Inhabited α] [@Straume m σ Chunk α β]
-                     : MonadParsec (ParsecT m β σ E) α β σ E where
+                     : MonadParsec (ParsecT m β σ E) σ α β E where
 
   parseError e := fun _xi s _cok _cerr _eok eerr => eerr.2 e s
 

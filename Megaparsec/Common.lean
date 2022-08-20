@@ -19,7 +19,7 @@ Simple combinators that are agnostic to the stream they're applied to.
 
 namespace Megaparsec.Common
 
-def string' (m : Type u → Type v) (℘ E : Type u) (α β : Type u) [MonadParsec m α β ℘ E] [BEq α] (x : α) : m α :=
-  MonadParsec.tokens (BEq.beq) x
+def string' (m : Type u → Type v) (℘ : Type u) {E : Type u} {α β : Type u} (x : α) [MonadParsec m ℘ α β E] [BEq α] : m α :=
+  MonadParsec.tokens ℘ (BEq.beq) x
 
 end Common
