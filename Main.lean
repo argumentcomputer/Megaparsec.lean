@@ -31,7 +31,6 @@ def main : IO Unit := do
     IO.println "Well parsed."
   else
     IO.println "Parse fail."
-  let EB := ParseErrorBundle Char String Unit
-  let y : (State Char String Unit × Either EB String) := runParserT' yp (initialState "" source)
+  let y := runParserT' yp (initialState "" source)
   IO.println "Let's see what isn't parsed after we parsed out `yatima`!"
   IO.println y.1.input
