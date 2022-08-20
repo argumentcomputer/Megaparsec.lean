@@ -189,8 +189,8 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
     let unexpect pos' u :=
       let got := pure u
       let want := match NEList.nonEmpty (Iterable.toList l) with
-      | .none => []
-      | .some nel => [ ErrorItem.tokens nel ]
+        | .none => []
+        | .some nel => [ ErrorItem.tokens nel ]
       ParseError.trivial pos' got want
     let test r := if f l r
       then

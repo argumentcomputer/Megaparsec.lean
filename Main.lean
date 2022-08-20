@@ -25,12 +25,25 @@ def main : IO Unit := do
   IO.println "Megaparsec demo!"
   let P := Parsec Char String Unit
   let source := "yatimaaaa!"
+  let bad := "yatimAaaa!"
   let yp := string' P String "yatima"
   let x : (Bool × Either Unit String) <- parseTestP yp source
   if x.1 then
     IO.println "Well parsed."
   else
     IO.println "Parse fail."
-  let y := runParserT' yp (initialState "" source)
+  let rp src (p := yp) := runParserT' p (initialState "" src)
+  let y := rp source
   IO.println "Let's see what isn't parsed after we parsed out `yatima`!"
   IO.println y.1.input
+  let ypp := do
+    let yat ← string' P String "yat"
+    let ima ← string' P String "ima"
+    return yat ++ ima
+  let yb := rp bad ypp
+  IO.println "Let's see how the parser fails."
+  match yb.2 with
+  | .left peb => IO.println $ ToString.toString peb
+  | .right _ => IO.println "Hmm, the parser didn't fail. That's a bug!"
+  IO.println "But let's make sure that ypp parser actually works."
+  let _yg : (Bool × Either Unit String) ← parseTestP ypp source
