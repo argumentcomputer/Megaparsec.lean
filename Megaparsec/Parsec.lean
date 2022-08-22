@@ -192,49 +192,50 @@ def parseTestP (p : Parsec β σ E γ) (xs : σ) [ToString γ]
 ---================= USER-FACING FUNCTIONS ===================--
 ---===========================================================--
 
-/- Extracts the end result from ParsecT over a stream.
-This is a "decorative" wrapper around generic runParserT'.
+-- /- Extracts the end result from ParsecT over a stream.
+-- This is a "decorative" wrapper around generic runParserT'.
 
-We ask for:
+-- We ask for:
 
- 1. Some monad. `[Monad monad]`.
- 2. Equipped with a facility to refill a buffer. `[Flood monad bufferedSource]`.
- 3. A way to extract some composite value `[Coco bufferedSource]`.
--/
-def runParserT (p : ParsecT monad atomic bufferedSource error result)
-               (s₀ : State atomic bufferedSource error)
-               [Monad monad]
-               [Flood monad bufferedSource]
-               [Coco composite bufferedSource]
-               [Iterable composite atomic]
-               [Inhabited α]
-               [Inhabited (monad (Chunk α × bufferedSource))]
-               -- ⊢
-               [@Straume monad bufferedSource Chunk composite atomic] :=
-  runParserT' p s₀
+--  1. Some monad. `[Monad monad]`.
+--  2. Equipped with a facility to refill a buffer. `[Flood monad bufferedSource]`.
+--  3. A way to extract some composite value `[Coco bufferedSource]`.
+--  TODO?
+-- -/
+-- def runParserT (p : ParsecT monad atomic bufferedSource error result)
+--                (s₀ : State atomic bufferedSource error)
+--                [Monad monad]
+--                [Flood monad bufferedSource]
+--                [Coco composite bufferedSource]
+--                [Iterable composite atomic]
+--                [Inhabited α]
+--                [Inhabited (monad (Chunk α × bufferedSource))]
+--                -- ⊢
+--                [@Straume monad bufferedSource Chunk composite atomic] :=
+--   runParserT' p s₀
 
-/- Finally parse something out of a Parsec over a stream.
-Works over some stream `σ`.
-This is a "decorative" wrapper around generic runParserP -/
-def runParser (p : Parsec atomic bufferedSource error result)
-              (sourceName : String)
-              (xs : bufferedSource)
-              [Coco composite bufferedSource]
-              [Iterable composite atomic]
-              [Inhabited α] :=
-  runParserP p sourceName
+-- /- Finally parse something out of a Parsec over a stream.
+-- Works over some stream `σ`.
+-- This is a "decorative" wrapper around generic runParserP -/
+-- def runParser (p : Parsec atomic bufferedSource error result)
+--               (sourceName : String)
+--               (xs : bufferedSource)
+--               [Coco composite bufferedSource]
+--               [Iterable composite atomic]
+--               [Inhabited α] :=
+--   runParserP p sourceName
 
-/- Synonym for `runParser`. -/
-def parse (p : Parsec atomic bufferedSource error result)
-          (sourceName : String)
-          (xs : bufferedSource)
-          [Coco composite bufferedSource]
-          [Iterable composite atomic]
-          [Inhabited α] :=
-  @runParser atomic bufferedSource error result composite
+-- /- Synonym for `runParser`. -/
+-- def parse (p : Parsec atomic bufferedSource error result)
+--           (sourceName : String)
+--           (xs : bufferedSource)
+--           [Coco composite bufferedSource]
+--           [Iterable composite atomic]
+--           [Inhabited α] :=
+--   @runParser atomic bufferedSource error result composite
 
-/- Test some parser over stream.
-This is a "decorative" wrapper around generic parseTestP. -/
-def parseTest (p : Parsec β σ E γ) (xs : σ) [ToString γ]
-              [Monad m] [@Straume m ℘ Chunk α β] [Iterable α β] [Iterable.Bijection β α] :=
-  parseTestP p xs
+-- /- Test some parser over stream.
+-- This is a "decorative" wrapper around generic parseTestP. -/
+-- def parseTest (p : Parsec β σ E γ) (xs : σ) [ToString γ]
+--               [Monad m] [@Straume m ℘ Chunk α β] [Iterable α β] [Iterable.Bijection β α] :=
+--   parseTestP p xs

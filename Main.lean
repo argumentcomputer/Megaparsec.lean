@@ -36,10 +36,8 @@ def main : IO Unit := do
   let y := rp source
   IO.println "Let's see what isn't parsed after we parsed out `yatima`!"
   IO.println y.1.input
-  let ypp := do
-    let yat ← string' P String "yat"
-    let ima ← string' P String "ima"
-    return yat ++ ima
+
+  let ypp := (string' P String "yat") *> (string' P String "ima")
   let yb := rp bad ypp
   IO.println "Let's see how the parser fails."
   match yb.2 with
