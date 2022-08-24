@@ -13,7 +13,7 @@ def Err (m : Type f → Type v) (β σ E : Type u) (ξ : Type f) :=
 
 /-
 `withHints hs c` adds hints to “ERROR” continuation that will add given
-hints @hs@ to third argument of original continuation c
+hints @hs@ to third argument of original continuation c.
 -/
 def withHints (hs : Hints β)
               (f : Err m β σ γ ξ) : Err m β σ γ ξ :=
