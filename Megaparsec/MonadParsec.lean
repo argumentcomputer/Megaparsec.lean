@@ -229,10 +229,7 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
       match el with
       | .none => []
       | .some ell => [[ell]]
-    let want := -- (Option.option [] ((List.concat []) <$> el))
-      match hs with
-      | [] => []
-      | x :: _ => x
+    let want := hs.headD []
     let res cs y := do
       let n := Iterable.length cs
       if (n == 0) then
@@ -267,10 +264,7 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
       match el with
       | .none => []
       | .some ell => [[ell]]
-    let want := -- (Option.option [] ((List.concat []) <$> el))
-      match hs with
-      | [] => []
-      | x :: _ => x
+    let want := hs.headD []
     let y : (Chunk α × σ) ← Straume.takeN n s.input
     let ok cs := cok.2 cs {s with offset := s.offset + n, input := y.2} hs
     match y.1 with
