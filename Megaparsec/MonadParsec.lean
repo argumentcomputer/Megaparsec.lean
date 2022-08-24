@@ -50,7 +50,7 @@ class MonadParsec (m : Type u → Type v) (℘ α : Type u) (β E : outParam (Ty
   withRecovery : (φ : ParseError β E → m γ) → m γ → m γ
   /- Observes errors as they happen, without backtracking. -/
   observing : m γ → m (Either (ParseError β E) γ)
-  /- The parser at the end of the stream. -/
+  /- The parser only succeeds at the end of the stream. -/
   eof : m PUnit
   /- If `φ` is `.some`, parse the token.
   Otherwise, accumulate `.none`s into `acc` for error reporting. -/
