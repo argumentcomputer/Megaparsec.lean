@@ -1,45 +1,66 @@
-import Megaparsec.Stream
 import Megaparsec.Errors.Result
-import Megaparsec.Errors.StreamErrors
+import Megaparsec.Errors.ParseError
+import Megaparsec.Pos
 
-namespace ParserState
+import Straume.Coco
+import Straume.Iterator
 
-structure Pos where
-  pos : Nat
+open Megaparsec.Errors.ParseError
+open Megaparsec.Pos
+
+open Straume.Coco
+open Straume.Iterator
+
+/-  -/
+namespace Megaparsec.ParserState
 
 structure SourcePos where
   name : String
   line : Pos
   column: Pos
 
-structure PosState (S : Type u) where
-  input : S
+-- Pretty-print a `SourcePos`.
+def sourcePosPretty : SourcePos → String
+  | ⟨n, l, c⟩ => let lcStr := s!"{l.pos}:{c.pos}"
+    if n.isEmpty then lcStr else s!"{n}:{lcStr}"
+
+universe u
+
+-- variable (β : Type u)
+-- variable (s : Type u) -- [Coco α s] [Iterable α β]
+-- variable (E : Type u)
+
+/- Calculates line / column on demand. -/
+structure PosState (σ : Type u) where
+  input : σ
   offset : Nat
   sourcePos : SourcePos
+  tabWidth : Nat
   linePrefix : String
 
-structure State (S E : Type) [s : Stream.Stream S] where
-  input       : S
+/- Supports parsing by tracking consumed parts of stream and tracking errors. -/
+structure State (β σ E : Type u) where
+  input       : σ
   offset      : Nat
-  posState    : @PosState S
-  parseErrors : List (@StreamErrors.ParseError S E s)
+  posState    : PosState σ
+  parseErrors : List (ParseError β E)
 
-structure Reply (S E A : Type) [Stream.Stream S] where
-  state    : State S E
+-- TODO: DEPENDENT PARSING IN HIGHER UNIVERSES S S
+/- A result of evaluation of a particular parser. -/
+open Megaparsec.Errors.Result in
+structure Reply (β σ γ E : Type u) where
+  state    : @State β σ E
   consumed : Bool
-  result   : Result.Result S E A
+  result   : Result β γ E
 
-def longestMatch [Stream.Stream S] (s₁ : State S E) (s₂ : State S E) : State S E :=
+def longestMatch (s₁ : @State β σ E) (s₂ : @State β σ E) : @State β σ E :=
   match compare s₁.offset s₂.offset with
     | Ordering.lt => s₂
     | Ordering.eq => s₂
     | Ordering.gt => s₁
 
-def initialState {S : Type} [stream : Stream.Stream S]
-                 (sourceName : String) (xs : S)
-                 : State S E :=
+/- State smart constructor. -/
+def initialState (sourceName : String) (xs : σ) : @State β σ E :=
   let p₀ := Pos.mk 0
-  let posState := PosState.mk xs 0 (SourcePos.mk sourceName p₀ p₀) ""
+  let posState := PosState.mk xs 0 (SourcePos.mk sourceName p₀ p₀) 2 ""
   State.mk xs 0 posState []
-
-end ParserState
