@@ -64,7 +64,7 @@ class MonadParsec (m : Type u → Type v) (℘ α : Type u) (β E : outParam (Ty
   Optional `String` is a way to name the expected token.
   For example:
 
-  `takeWhileP (.just "symbol of Korean alphabet") f` = `many (satisfy f <?> "symbol of Korean alphabet")`
+  `takeWhileP (.some "symbol of Korean alphabet") f` = `many (satisfy f <?> "symbol of Korean alphabet")`
 
   `takeWhileP .none` f = `many (satisfy f)`.
   -/
