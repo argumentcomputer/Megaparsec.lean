@@ -167,6 +167,14 @@ def runParserT' {m : Type u → Type v} {β σ E γ : Type u}
       | .some pes => (s₁, .left $ toBundle s₀ pes)
     | .err e => (s₁, .left (toBundle s₀ $ List.toNEList e s₁.parseErrors))
 
+def parseTestTP {m : Type → Type v} {β σ E : Type} {γ : Type}
+                (p : ParsecT m β σ E γ) (xs : σ) (srcName := "(test run)") [ToString E] [ToString β] [ToString γ] [Monad m] [MonadLiftT m IO]
+                : IO (Bool × Either Unit γ) := do
+  let reply ← liftM $ runParserT' p (initialState srcName xs)
+  match reply.2 with
+  | .left e => IO.println e >>= fun _ => pure $ (false, Either.left ())
+  | .right y => IO.println y >>= fun _ => pure $ (true, Either.right y)
+
 /- Extracts the end result from Parsec run and presents it as a tuple as is (under Id monad). -/
 def runParserS (p : Parsec β σ E γ) (s₀ : State β σ E) :=
   runParserT' p s₀

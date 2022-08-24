@@ -46,5 +46,20 @@ def main : IO Unit := do
   IO.println "But let's make sure that ypp parser actually works."
   let _yg : (Bool × Either Unit String) ← parseTestP ypp source
 
-  -- let lisp := between (char '(') (char ')') $ do
-    -- pure $ "not yet"
+  let file := System.mkFilePath ["./Tests", "abcd.txt"]
+  let h ← IO.FS.Handle.mk file IO.FS.Mode.read false
+  let bh := ("", h)
+  let S := (String × IO.FS.Handle)
+  let Q := ParsecT IO Char S Unit
+  -- let abcdp := (string Q S "abcd" <* MonadParsec.eof S String)
+  let abcdpnl := do
+    let res1 ← (string Q S "ab")
+    let res2 ← (string Q S "cd")
+    let _nl ← (string Q S "
+")
+    let _eos ← (MonadParsec.eof S String)
+    pure $ res1 ++ res2
+  IO.println "Let's see if @ixhaedron's test passes."
+  let _ix : (Bool × Either Unit String) ← parseTestTP abcdpnl bh
+  let h1 ← IO.FS.Handle.mk (System.mkFilePath ["./Tests", "abcd-no-nl.txt"]) IO.FS.Mode.read false
+  let _ixx : (Bool × Either Unit String) ← parseTestTP (string Q S "abcd" <* MonadParsec.eof S String) ("", h1)

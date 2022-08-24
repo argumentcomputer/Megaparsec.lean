@@ -111,6 +111,7 @@ private def nelstr (x : Char) (xs : String) := match NEList.nonEmptyString xs wi
 
 instance theInstance {m : Type u → Type v} {α β σ E : Type u}
                      [Monad m] [Iterable α β] [Iterable.Bijection β α] [Inhabited α] [@Straume m σ Chunk α β]
+                     [ToString β]
                      : MonadParsec (ParsecT m β σ E) σ α β E where
 
   parseError e := fun _xi s _cok _cerr _eok eerr => eerr.2 e s
@@ -164,6 +165,7 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
 
   eof := fun _ s _ _ eok eerr => do
       let y : (Chunk β × σ) ← Straume.take1 α s.input
+      dbg_trace y.1
       let err c := eerr.2 (.trivial s.offset (.some $ ErrorItem.tokens $ NEList.uno c) ([.eof])) s
       match y.1 with
       | .nil => eok.2 PUnit.unit s []
