@@ -19,17 +19,7 @@ structure SourcePos where
   line : Pos
   column: Pos
 
-/-
--- | Pretty-print a 'SourcePos'.
---
--- @since 5.0.0
-sourcePosPretty :: SourcePos -> String
-sourcePosPretty (SourcePos n l c)
-  | null n = showLC
-  | otherwise = n <> ":" <> showLC
-  where
-    showLC = show (unPos l) <> ":" <> show (unPos c) -/
-
+-- Pretty-print a `SourcePos`.
 def sourcePosPretty : SourcePos → String
   | ⟨n, l, c⟩ => let lcStr := s!"{l.pos}:{c.pos}"
     if n.isEmpty then lcStr else s!"{n}:{lcStr}"
