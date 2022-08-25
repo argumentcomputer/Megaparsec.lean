@@ -24,6 +24,13 @@ def sourcePosPretty : SourcePos → String
   | ⟨n, l, c⟩ => let lcStr := s!"{l.pos}:{c.pos}"
     if n.isEmpty then lcStr else s!"{n}:{lcStr}"
 
+structure Range where
+  first : SourcePos
+  last : SourcePos
+
+instance : ToString Range where
+  toString x := s!"<{sourcePosPretty x.first},{sourcePosPretty x.last}>"
+
 universe u
 
 -- variable (β : Type u)

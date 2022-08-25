@@ -6,6 +6,7 @@ import Megaparsec.Errors.StreamErrors
 -- import Megaparsec.Errors.StreamErrors
 import Megaparsec.Ok
 import Megaparsec.ParserState
+import Megaparsec.Streamable
 import Straume
 import Straume.Chunk
 import Straume.Coco
@@ -23,6 +24,7 @@ open Megaparsec.Errors
 -- open Megaparsec.Errors.StreamErrors
 open Megaparsec.Ok
 open Megaparsec.ParserState
+open Megaparsec.Streamable
 
 open Straume
 open Straume.Flood
@@ -45,7 +47,11 @@ instance : Outcome Empty where
   make := Empty.mk
   consumed? := false
 
-def ParsecTF (m : Type u → Type v) (β σ E γ ξ : Type u) :=
+/-
+Note: `ParsecT m β σ E` (note absence of γ) will have kind `Type u → Type (max u v)`.
+It is perfect to define a monad. -/
+def ParsecT (m : Type u → Type v) (β σ E γ : Type u) :=
+  ∀ (ξ : Type u),
   let ok := Ok m β σ E γ ξ
   let err := Err m β σ E ξ
   State β σ E →
@@ -54,12 +60,6 @@ def ParsecTF (m : Type u → Type v) (β σ E γ ξ : Type u) :=
     (Empty × ok) →
     (Empty × err) →
     m ξ
-
-/-
-Note: `ParsecT m β σ E` (note absence of γ) will have kind `Type u → Type (max u v)`.
-It is perfect to define a monad. -/
-def ParsecT (m : Type u → Type v) (β σ E γ : Type u) :=
-  ∀ (ξ : Type u), ParsecTF m β σ E γ ξ
 
 def runOk (o : Type) {β σ γ E : Type u}
           [Outcome o] [Monad m] : (o × Ok m β σ E γ (Reply β σ γ E)) :=
@@ -147,6 +147,21 @@ instance : Alternative (ParsecT m β σ E) where
         (thunk ()) xi s cok (cerr.1, nge cerr.2) (eok.1, ng) (eerr.1, nge eerr.2)
     guess xi s cok cerr eok (eerr.1, fallback)
 
+-- open StreamErrors in
+-- open Outcome in
+-- instance : Alternative (Parsec β σ E) where
+--   failure := fun _ s _ _ _ eerr => eerr.2 (.trivial s.offset Option.none []) s
+--   orElse guess thunk :=
+--     fun xi s cok cerr eok eerr =>
+--       let fallback err ms :=
+--         let nge ψ err' s' := ψ (mergeErrors err' err) (longestMatch ms s')
+--         let ng x s' hs := eok.2 x s' (toHints s'.offset err ++ hs)
+--         (thunk ()) xi s cok (cerr.1, nge cerr.2) (eok.1, ng) (eerr.1, nge eerr.2)
+--     guess xi s cok cerr eok (eerr.1, fallback)
+
+instance : Inhabited (ParsecT m β σ E γ) where
+  default := Alternative.failure
+
 ---=========================================================--
 ---================= IMPORTANT FUNCTIONS ===================--
 ---=========================================================--
@@ -168,7 +183,7 @@ def runParserT' {m : Type u → Type v} {β σ E γ : Type u}
     | .err e => (s₁, .left (toBundle s₀ $ List.toNEList e s₁.parseErrors))
 
 def parseTestTP {m : Type → Type v} {β σ E : Type} {γ : Type}
-                (p : ParsecT m β σ E γ) (xs : σ) (srcName := "(test run)") [ToString E] [ToString β] [ToString γ] [Monad m] [MonadLiftT m IO]
+                (p : ParsecT m β σ E γ) (xs : σ) (srcName := "(test run)") [ToString E] [ToString β] [ToString γ] [Monad m] [MonadLiftT m IO] [Streamable σ]
                 : IO (Bool × Either Unit γ) := do
   let reply ← liftM $ runParserT' p (initialState srcName xs)
   match reply.2 with
@@ -188,62 +203,13 @@ def runParserP (p : Parsec β σ E γ) (srcName : String) (xs : σ) :=
 def parseP (p : Parsec β σ E γ) (srcName : String) (xs : σ) :=
   runParserP p srcName xs
 
+def parseTP (p : ParsecT m β σ E γ) (srcName : String) (xs : σ) [Monad m] :=
+  runParserT' p (initialState srcName xs) >>=
+    fun y => pure y.2
+
 /- Test some parser polymorphically. -/
-def parseTestP (p : Parsec β σ E γ) (xs : σ) [ToString γ]
-               : IO (Bool × Either Unit γ) :=
+def parseTestP (p : Parsec β σ E γ) [ToString γ] [ToString β] [ToString E]
+  (xs : σ) [Streamable σ] : IO (Bool × Either Unit γ) :=
   match parseP p "" xs with
-  -- TODO: Learn to print errors!
-  | .left _e => IO.println "There were some errors." >>= fun _ => pure $ (false, Either.left ())
+  | .left es => IO.println s!"{es}" >>= fun _ => pure $ (false, Either.left ())
   | .right y => IO.println y >>= fun _ => pure $ (true, Either.right y)
-
----===========================================================--
----================= USER-FACING FUNCTIONS ===================--
----===========================================================--
-
--- /- Extracts the end result from ParsecT over a stream.
--- This is a "decorative" wrapper around generic runParserT'.
-
--- We ask for:
-
---  1. Some monad. `[Monad monad]`.
---  2. Equipped with a facility to refill a buffer. `[Flood monad bufferedSource]`.
---  3. A way to extract some composite value `[Coco bufferedSource]`.
---  TODO?
--- -/
--- def runParserT (p : ParsecT monad atomic bufferedSource error result)
---                (s₀ : State atomic bufferedSource error)
---                [Monad monad]
---                [Flood monad bufferedSource]
---                [Coco composite bufferedSource]
---                [Iterable composite atomic]
---                [Inhabited α]
---                [Inhabited (monad (Chunk α × bufferedSource))]
---                -- ⊢
---                [@Straume monad bufferedSource Chunk composite atomic] :=
---   runParserT' p s₀
-
--- /- Finally parse something out of a Parsec over a stream.
--- Works over some stream `σ`.
--- This is a "decorative" wrapper around generic runParserP -/
--- def runParser (p : Parsec atomic bufferedSource error result)
---               (sourceName : String)
---               (xs : bufferedSource)
---               [Coco composite bufferedSource]
---               [Iterable composite atomic]
---               [Inhabited α] :=
---   runParserP p sourceName
-
--- /- Synonym for `runParser`. -/
--- def parse (p : Parsec atomic bufferedSource error result)
---           (sourceName : String)
---           (xs : bufferedSource)
---           [Coco composite bufferedSource]
---           [Iterable composite atomic]
---           [Inhabited α] :=
---   @runParser atomic bufferedSource error result composite
-
--- /- Test some parser over stream.
--- This is a "decorative" wrapper around generic parseTestP. -/
--- def parseTest (p : Parsec β σ E γ) (xs : σ) [ToString γ]
---               [Monad m] [@Straume m ℘ Chunk α β] [Iterable α β] [Iterable.Bijection β α] :=
---   parseTestP p xs
