@@ -1,20 +1,22 @@
 import Megaparsec.Errors.ParseError
 import Megaparsec.ParserState
+import Megaparsec.Streamable
 import YatimaStdLib
 
 namespace Megaparsec.Errors.Bundle
 
-open Megaparsec.ParserState
 open Megaparsec.Errors.ParseError
+open Megaparsec.ParserState
+open Megaparsec.Streamable
 
 structure ParseErrorBundle (β σ E : Type u) where
   errors : NEList (ParseError β E)
   posState : PosState σ
 
--- Helper that makes necessary functions for `ParseErrorBundle.toErrorString`.
-private def makePEBfs [ToString β] [ToString E] : ((String → String) × PosState σ) → ParseError β E → ((String → String) × PosState σ)
+-- Helper that makes necessary functions for the `ToString` instance.
+private def makePEBfs [ToString β] [ToString E] [Streamable σ] : ((String → String) × PosState σ) → ParseError β E → ((String → String) × PosState σ)
   | (o, pst), e =>
-    let (msline, pst') := ((.none : Option String), pst)-- reachOffset (errorOffset e) pst
+    let (msline, pst') := Streamable.reachOffset (errorOffset e) pst
     let epos := pst'.sourcePos
     let offendingLine := match msline with
       | .none => ""
@@ -34,7 +36,7 @@ private def makePEBfs [ToString β] [ToString E] : ((String → String) × PosSt
         let padding := String.mk $ List.replicate (lineNumber.length + 1) ' '
         let rpadding :=
           if pointerLen > 0 then String.mk $ List.replicate rpshift ' ' else ""
-        s!"{padding}|\nlineNumber | {sline}\n{padding}| {rpadding}{pointer}\n"
+        s!"{padding}|\n{lineNumber} | {sline}\n{padding}| {rpadding}{pointer}\n"
     let outChunk :=
       s!"\n{sourcePosPretty epos}:\n{offendingLine}{parseErrorTextPretty e}"
     (o ∘ (fun x => outChunk ++ x), pst')
@@ -45,7 +47,7 @@ private def makePEBfs [ToString β] [ToString E] : ((String → String) × PosSt
   lines by doing a single pass over the input stream. The rendered `String`
   always ends with a newline.
 -/
-instance [ToString β] [ToString E] : ToString (ParseErrorBundle β σ E) where
+instance [ToString β] [ToString E] [Streamable σ] : ToString (ParseErrorBundle β σ E) where
   toString b :=
     let (r, _) := NEList.foldl makePEBfs (id, b.posState) b.errors
     String.drop (r "") 1

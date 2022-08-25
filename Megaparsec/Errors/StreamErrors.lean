@@ -51,6 +51,9 @@ def mergeErrors (e₁: ParseError β E)
           | (.fancy s₁ x₁, .fancy _ x₂) => .fancy s₁ (x₁ ++ x₂)
     | Ordering.gt => e₁
 
+instance : Append (ParseError β E) where
+  append := mergeErrors
+
 def toHints (streamPos : Nat) (e : ParseError α E) : Hints α :=
   match e with
     | ParseError.fancy _ _ => []
