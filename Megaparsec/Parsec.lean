@@ -45,7 +45,11 @@ instance : Outcome Empty where
   make := Empty.mk
   consumed? := false
 
-def ParsecTF (m : Type u → Type v) (β σ E γ ξ : Type u) :=
+/-
+Note: `ParsecT m β σ E` (note absence of γ) will have kind `Type u → Type (max u v)`.
+It is perfect to define a monad. -/
+def ParsecT (m : Type u → Type v) (β σ E γ : Type u) :=
+  ∀ (ξ : Type u),
   let ok := Ok m β σ E γ ξ
   let err := Err m β σ E ξ
   State β σ E →
@@ -54,12 +58,6 @@ def ParsecTF (m : Type u → Type v) (β σ E γ ξ : Type u) :=
     (Empty × ok) →
     (Empty × err) →
     m ξ
-
-/-
-Note: `ParsecT m β σ E` (note absence of γ) will have kind `Type u → Type (max u v)`.
-It is perfect to define a monad. -/
-def ParsecT (m : Type u → Type v) (β σ E γ : Type u) :=
-  ∀ (ξ : Type u), ParsecTF m β σ E γ ξ
 
 def runOk (o : Type) {β σ γ E : Type u}
           [Outcome o] [Monad m] : (o × Ok m β σ E γ (Reply β σ γ E)) :=
@@ -138,6 +136,18 @@ def longestMatch (s₀ : State β σ E) (s₁ : State β σ E) : State β σ E :
 open StreamErrors in
 open Outcome in
 instance : Alternative (ParsecT m β σ E) where
+  failure := fun _ s _ _ _ eerr => eerr.2 (.trivial s.offset Option.none []) s
+  orElse guess thunk :=
+    fun xi s cok cerr eok eerr =>
+      let fallback err ms :=
+        let nge ψ err' s' := ψ (mergeErrors err' err) (longestMatch ms s')
+        let ng x s' hs := eok.2 x s' (toHints s'.offset err ++ hs)
+        (thunk ()) xi s cok (cerr.1, nge cerr.2) (eok.1, ng) (eerr.1, nge eerr.2)
+    guess xi s cok cerr eok (eerr.1, fallback)
+
+open StreamErrors in
+open Outcome in
+instance : Alternative (Parsec β σ E) where
   failure := fun _ s _ _ _ eerr => eerr.2 (.trivial s.offset Option.none []) s
   orElse guess thunk :=
     fun xi s cok cerr eok eerr =>

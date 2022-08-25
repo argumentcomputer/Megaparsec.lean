@@ -26,7 +26,7 @@ namespace MonadParsec
 
 /- Monads m that implement primitive parsers.
 Thus, you see `m γ`, read it "parser m-gamma".  -/
-class MonadParsec (m : Type u → Type v) (℘ α : Type u) (β E : outParam (Type u)) where
+class MonadParsec (m : Type u → Type v) (℘ α E β : Type u) where
   /- Stop parsing wherever we are, and report ParseError. -/
   parseError : ParseError β E → m γ
   /- If `m γ` consumed no input, replace the names of expected tokens with `nameOverride`. -/
@@ -111,8 +111,7 @@ private def nelstr (x : Char) (xs : String) := match NEList.nonEmptyString xs wi
 
 instance theInstance {m : Type u → Type v} {α β σ E : Type u}
                      [Monad m] [Iterable α β] [Iterable.Bijection β α] [Inhabited α] [@Straume m σ Chunk α β]
-                     [ToString β]
-                     : MonadParsec (ParsecT m β σ E) σ α β E where
+                     : MonadParsec (ParsecT m β σ E) σ α E β where
 
   parseError e := fun _xi s _cok _cerr _eok eerr => eerr.2 e s
 
@@ -165,7 +164,6 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
 
   eof := fun _ s _ _ eok eerr => do
       let y : (Chunk β × σ) ← Straume.take1 α s.input
-      dbg_trace y.1
       let err c := eerr.2 (.trivial s.offset (.some $ ErrorItem.tokens $ NEList.uno c) ([.eof])) s
       match y.1 with
       | .nil => eok.2 PUnit.unit s []
@@ -284,3 +282,21 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
 
   updateParserState φ := fun _ s _ _ eok _ =>
     eok.2 PUnit.unit (φ s) []
+
+-- instance simpleInstance {α β σ E : Type u}
+--                         [ii : Iterable α β] [ib : Iterable.Bijection β α] [iia : Inhabited α] [is : @Straume Id σ Chunk α β]
+--                         : MonadParsec (Parsec β σ E) σ α E β := @theInstance Id α β σ E Id.instMonadId ii ib iia is
+
+-- def withRange {α β σ E γ : Type u} (p : ParsecT m β σ E (Range → γ)) : ParsecT m β σ E γ := do
+--   let first : SourcePos ← (p.getParserState).sourcePos
+--   let mkParser ← p
+--   let last ← (MonadParsec.getParserState p).sourcePos
+--   pure $ mkParser $ Range.mk first last
+
+def withRange (α : Type u) (p : ParsecT m β σ E (Range → γ)) [MonadParsec (ParsecT m β σ E) σ α E β] : ParsecT m β σ E γ := do
+  let s₀ : State β σ E ← MonadParsec.getParserState α
+  let first := s₀.posState.sourcePos
+  let go ← p
+  let s₁ : State β σ E ← MonadParsec.getParserState α
+  let last := s₁.posState.sourcePos
+  pure $ go (Range.mk first last)
