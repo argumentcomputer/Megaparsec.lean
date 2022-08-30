@@ -3,6 +3,7 @@ import Megaparsec.MonadParsec
 import Straume.Iterator
 import Straume.Coco
 import Straume
+import Megaparsec.Errors
 
 import YatimaStdLib
 
@@ -12,6 +13,7 @@ open Straume.Iterator (Iterable)
 open Straume.Iterator renaming Bijection → Iterable.Bijection
 open Straume.Coco
 open Straume
+open Megaparsec.Errors
 
 /-!
 # Common token combinators
@@ -22,6 +24,9 @@ Simple combinators that are agnostic to the stream they're applied to.
 namespace Megaparsec.Common
 
 universe u
+
+def single (m : Type u → Type v) (℘ E α : Type u) (x : β) [MonadParsec m ℘ α E β] [BEq β] : m β :=
+  MonadParsec.token ℘ α E (fun y => if x == y then .some x else .none) [ErrorItem.tokens $ NEList.uno x]
 
 -- TODO: case-insensitive version
 def string (m : Type u → Type v) (℘ E β : Type u) {α : Type u} (x : α) [MonadParsec m ℘ α E β] [BEq α] : m α :=
@@ -55,8 +60,13 @@ mutual
     sepEndBy1 p sep <|> pure []
 end
 
-def asum [Foldable t] [Alternative f] (fas : t (f α)) : f α :=
-  Foldable.foldr (fun a b => a <|> b) Alternative.failure fas
+-- -- TODO: Our foldable is not foldable: https://zulip.yatima.io/#narrow/stream/24-yatima-tools/topic/.5BYatimaStdLib.2Elean.5D.20chat/near/19242
+-- def asum {f : Type u → Type v} {t : Type v → Type v} [Foldable t] [Alternative f] (fas : t (f α)) : f α :=
+--   Foldable.foldr (fun a b => a <|> b) Alternative.failure fas
 
-def choice {m : Type → Type} {β σ E γ : Type} (ps : List (ParsecT m β σ E γ)) : ParsecT m β σ E γ :=
+def choice {m : Type → Type v} {β σ E γ : Type} (ps : List (ParsecT m β σ E γ)) : ParsecT m β σ E γ :=
+  List.foldr (fun a b => a <|> b) Alternative.failure ps
+
+/- m-polymorphic choice -/
+def choiceP {m : Type → Type v} (σ α E β : Type) {γ : Type} (ps : List (m γ)) [MonadParsec m σ α E β] [Alternative m] : m γ :=
   List.foldr (fun a b => a <|> b) Alternative.failure ps

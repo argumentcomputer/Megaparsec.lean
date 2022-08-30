@@ -55,29 +55,31 @@ instance : ToString Lisp where
   | .symbol s => symToString s
   | .list xs => unwords $ listLispToList xs
 
-def stringP ℘ : Parsec Char ℘ Unit (Range → Lisp) :=
-  sorry
+variable (℘ : Type) [MonadParsec (Parsec Char ℘ Unit) ℘ String Unit Char]
 
-def listP ℘ : Parsec Char ℘ Unit (Range → Lisp) :=
-  sorry
+structure Parsers where
+  s : StringSimple ℘ := {}
+  stringP : Parsec Char ℘ Unit (Range → Lisp) :=
+    sorry
+    -- s.label "string" $ do
+    -- let str ← between (char '"') (char '"')
+    -- str
+  listP : Parsec Char ℘ Unit (Range → Lisp) :=
+    sorry
+  numP : Parsec Char ℘ Unit (Range → Lisp) :=
+    sorry
+  identifierP : Parsec Char ℘ Unit (Range → Lisp) :=
+    sorry
+  quoteP : Parsec Char ℘ Unit (Range → Lisp) :=
+    sorry
 
-def numP ℘ : Parsec Char ℘ Unit (Range → Lisp) :=
-  sorry
-
-def identifierP ℘ : Parsec Char ℘ Unit (Range → Lisp) :=
-  sorry
-
-def quoteP ℘ : Parsec Char ℘ Unit (Range → Lisp) :=
-  sorry
-
-def lispExprP ℘ [MonadParsec (Parsec Char ℘ Unit) ℘ String Unit Char] : Parsec Char ℘ Unit (Range → Lisp) :=
-  -- let ps : List (Parsec Char ℘ Unit (Range → Lisp)) := [stringP ℘]
-  -- let res : Parsec Char ℘ Unit (Range → Lisp) := choice ps
+def lispExprP : Parsec Char ℘ Unit (Range → Lisp) :=
+  let p : Parsers ℘ := {}
   choice [
-    stringP ℘,
-    listP ℘,
-    attempt ℘ $ numP ℘
+    p.stringP,
+    p.listP,
+    p.s.attempt $ p.numP
   ]
 
-def lispParser ℘ [MonadParsec (Parsec Char ℘ Unit) ℘ String Unit Char] : Parsec Char ℘ Unit Lisp :=
-  withRange String $ lispExprP ℘
+-- def lispParser ℘ [MonadParsec (Parsec Char ℘ Unit) ℘ String Unit Char] : Parsec Char ℘ Unit Lisp :=
+--   withRange String $ lispExprP ℘

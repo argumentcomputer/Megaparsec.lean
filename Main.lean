@@ -6,6 +6,7 @@ import Megaparsec.ParserState
 import Megaparsec.Errors.Bundle
 import YatimaStdLib
 import Straume.Coco
+import Megaparsec.Char
 
 open LSpec
 open Megaparsec.Parsec
@@ -13,13 +14,14 @@ open Straume.Coco
 open Megaparsec.Errors.Bundle
 open MonadParsec
 open Megaparsec.ParserState
-
-
-instance {α : Type u} : Coco α α where
-  coco := id
-  replace _ x := x
+open Megaparsec.Char
 
 open Megaparsec.Common
+
+private def cs : Parsec Char String Unit Char :=
+  let cs : CharSimple (Parsec Char String Unit) String Unit := {}
+  cs.char' 'y'
+
 
 def main : IO Unit := do
   IO.println "Megaparsec demo!"
@@ -62,3 +64,11 @@ def main : IO Unit := do
   let _ix : (Bool × Either Unit String) ← parseTestTP abcdpnl bh
   let h1 ← IO.FS.Handle.mk (System.mkFilePath ["./Tests", "abcd-no-nl.txt"]) IO.FS.Mode.read false
   let _ixx : (Bool × Either Unit String) ← parseTestTP (string Q S Unit Char "abcd" <* MonadParsec.eof S String Unit Char) ("", h1)
+
+  IO.println "We have also done a lot of work to export specified versions of things."
+  let _xx : (Bool × Either Unit Char) ← parseTestP cs "Yatima!"
+
+  IO.println "This stuff is also exported for your convenience."
+  let _xxx : (Bool × Either Unit Char) ← parseTestP (char_simple_pure.char' 'Y') "yatima!"
+
+  IO.println "FIN"
