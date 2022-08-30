@@ -8,7 +8,6 @@ open MonadParsec
 open Megaparsec.Parsec
 open Megaparsec.Common
 open Megaparsec.String
-open Megaparsec.String.Simple
 open Megaparsec.ParserState
 
 namespace Megaparsec.Lisp

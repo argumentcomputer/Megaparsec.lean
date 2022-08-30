@@ -39,6 +39,10 @@ def between [SeqLeft φ] [SeqRight φ] (f : φ α) (h : φ β) (g : φ γ) : φ 
 def liftSeq2 [Seq φ] [Functor φ] (f2 : α → β → γ) (x : φ α) : (Unit → φ β) → φ γ :=
   Seq.seq (Functor.map f2 x)
 
+def void [Functor φ] (fx : φ a) : φ Unit :=
+  (fun _ => ()) <$> fx
+
+
 -- TODO: A lot of thunks here. Support monadic versions of these combinators.
 mutual
   partial def some [Alternative φ] [Inhabited (φ (List α))] (p : φ α) : φ (List α) :=

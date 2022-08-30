@@ -68,6 +68,7 @@ class MonadParsec (m : Type u → Type v) (℘ α E β : Type u) where
 
   `takeWhileP .none` f = `many (satisfy f)`.
   -/
+
   takeWhileP : Option String → (β → Bool) → m α
   /- Like `takeWhileP`, but fail if there are zero matches.
 

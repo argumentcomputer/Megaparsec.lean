@@ -14,13 +14,9 @@ open Megaparsec.Common
 
 namespace Megaparsec.String
 
-variable (℘ : Type) [MonadParsec (Parsec Char ℘ Unit) ℘ String Unit Char]
+-- variable (℘ : Type) (m : Type → Type 1 := m) [MonadParsec m ℘ String Unit Char]
 
--- def StrFancyT m E  := ParsecT m Char ℘T E
--- def StrT m := ParsecT m Char ℘T Unit
-
--- def StrFancy E := Parsec Char ℘ E
--- def Str := Parsec Char ℘ Unit
+variable (m : Type → Type v) (℘ E : Type) [MonadParsec m ℘ String E Char]
 
 def swap (a : Char) (b : Char) (xs : String) : String :=
   xs.map (fun x => if x == a then b else x)
@@ -28,26 +24,25 @@ def swap (a : Char) (b : Char) (xs : String) : String :=
 def unwords : List String → String :=
   String.intercalate " "
 
-namespace Megaparsec.String.Simple
-
 -- TODO: metaprogramming?!
 structure StringSimple where
-  parseError : ParseError Char Unit → Parsec Char ℘ Unit γ := MonadParsec.parseError ℘ String
-  label : String → Parsec Char ℘ Unit γ → Parsec Char ℘ Unit γ := MonadParsec.label ℘ String Unit Char
-  hidden : Parsec Char ℘ Unit γ → Parsec Char ℘ Unit γ := MonadParsec.hidden ℘ String Unit Char
-  attempt : Parsec Char ℘ Unit γ → Parsec Char ℘ Unit γ := MonadParsec.attempt ℘ String Unit Char
-  lookAhead : Parsec Char ℘ Unit γ → Parsec Char ℘ Unit γ := MonadParsec.lookAhead ℘ String Unit Char
-  notFollowedBy : Parsec Char ℘ Unit γ → Parsec Char ℘ Unit PUnit := MonadParsec.notFollowedBy ℘ String Unit Char
-  withRecovery : (ParseError Char Unit → Parsec Char ℘ Unit γ) → Parsec Char ℘ Unit γ → Parsec Char ℘ Unit γ := MonadParsec.withRecovery ℘ String
-  observing : Parsec Char ℘ Unit γ → Parsec Char ℘ Unit (Either (ParseError Char Unit) γ) := MonadParsec.observing ℘ String
-  eof : Parsec Char ℘ Unit PUnit := MonadParsec.eof ℘ String Unit Char
-  token : (Char → Option γ) → List (ErrorItem Char) → Parsec Char ℘ Unit γ := MonadParsec.token ℘ String Unit
-  tokens : (String → String → Bool) → String → Parsec Char ℘ Unit String := MonadParsec.tokens ℘ Unit Char
-  takeWhileP : Option String → (Char → Bool) → Parsec Char ℘ Unit String := MonadParsec.takeWhileP ℘ Unit
-  takeWhile1P : Option String → (Char → Bool) → Parsec Char ℘ Unit String := MonadParsec.takeWhile1P ℘ Unit
-  takeP : Option String → Nat → Parsec Char ℘ Unit String := MonadParsec.takeP ℘ Unit Char
-  getParserState : Parsec Char ℘ Unit (State Char ℘ Unit) := MonadParsec.getParserState String
-  updateParserState : (State Char ℘ Unit → State Char ℘ Unit) → Parsec Char ℘ Unit PUnit := MonadParsec.updateParserState String
-  stringP (x : String) : Parsec Char ℘ Unit String := MonadParsec.tokens ℘ Unit Char (BEq.beq) x
+  parseError : ParseError Char E → m γ := MonadParsec.parseError ℘ String
+  label : String → m γ → m γ := MonadParsec.label ℘ String E Char
+  hidden : m γ → m γ := MonadParsec.hidden ℘ String E Char
+  attempt : m γ → m γ := MonadParsec.attempt ℘ String E Char
+  lookAhead : m γ → m γ := MonadParsec.lookAhead ℘ String E Char
+  notFollowedBy : m γ → m PUnit := MonadParsec.notFollowedBy ℘ String E Char
+  withRecovery : (ParseError Char E → m γ) → m γ → m γ := MonadParsec.withRecovery ℘ String
+  observing : m γ → m (Either (ParseError Char E) γ) := MonadParsec.observing ℘ String
+  eof : m PUnit := MonadParsec.eof ℘ String E Char
+  token : (Char → Option γ) → List (ErrorItem Char) → m γ := MonadParsec.token ℘ String E
+  tokens : (String → String → Bool) → String → m String := MonadParsec.tokens ℘ E Char
+  takeWhileP : Option String → (Char → Bool) → m String := MonadParsec.takeWhileP ℘ E
+  takeWhile1P : Option String → (Char → Bool) → m String := MonadParsec.takeWhile1P ℘ E
+  takeP : Option String → Nat → m String := MonadParsec.takeP ℘ E Char
+  getParserState : m (State Char ℘ E) := MonadParsec.getParserState String
+  updateParserState : (State Char ℘ E → State Char ℘ E) → m PUnit := MonadParsec.updateParserState String
+  stringP (x : String) : m String := MonadParsec.tokens ℘ E Char (BEq.beq) x
 
-end Megaparsec.String.Simple
+def string_simple (℘x : Type) [MonadParsec (Parsec Char ℘x Unit) ℘x String Unit Char] : StringSimple (Parsec Char ℘x Unit) ℘x Unit := {}
+def string_simple_pure : StringSimple (Parsec Char String Unit) String Unit := {}
