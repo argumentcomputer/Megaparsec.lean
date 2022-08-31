@@ -1,12 +1,14 @@
 import Megaparsec.Parsec
 import Megaparsec.MonadParsec
 import Megaparsec.Common
+import Megaparsec.Char
 import Megaparsec.String
 import Megaparsec.ParserState
 
 open MonadParsec
 open Megaparsec.Parsec
 open Megaparsec.Common
+open Megaparsec.Char
 open Megaparsec.String
 open Megaparsec.ParserState
 
@@ -54,31 +56,58 @@ instance : ToString Lisp where
   | .symbol s => symToString s
   | .list xs => unwords $ listLispToList xs
 
-variable (℘ : Type) [MonadParsec (Parsec Char ℘ Unit) ℘ String Unit Char]
+variable (℘ : Type) [MonadParsec (Parsec Char ℘ Unit) ℘ String Unit Char] [Inhabited ℘]
+abbrev P state := Parsec Char state Unit
 
-structure Parsers where
-  s : StringSimple ℘ := {}
+structure LinearParsers where
+  -- s : StringSimple (P ℘) ℘ Unit := {}
+  s := string_simple ℘
+  c := char_simple ℘
+  quoteAnyChar := c.char '\\' *> c.anySingle
   stringP : Parsec Char ℘ Unit (Range → Lisp) :=
-    sorry
-    -- s.label "string" $ do
-    -- let str ← between (char '"') (char '"')
-    -- str
-  listP : Parsec Char ℘ Unit (Range → Lisp) :=
-    sorry
-  numP : Parsec Char ℘ Unit (Range → Lisp) :=
-    sorry
-  identifierP : Parsec Char ℘ Unit (Range → Lisp) :=
-    sorry
-  quoteP : Parsec Char ℘ Unit (Range → Lisp) :=
-    sorry
+    s.label "string" $ do
+    let (str : String) ←
+      between (c.char '"') (c.char '"') $
+        String.mk <$> (many $ quoteAnyChar <|> c.noneOf "\\\"".data)
+    pure $ fun r => Lisp.string (str, r)
+  commentP := s.label "comment" $
+    c.char ';' *>
+    many
+      (c.noneOf "\r\n".data) *>
+      (c.eol <|> (c.eof *> pure "")) *>
+      pure Unit.unit
+  ignore := many (c.space1 <|> (commentP *> pure "")) *> pure Unit.unit
+  -- numP : Parsec Char ℘ Unit (Range → Lisp) :=
+  --   sorry
+  -- identifierP : Parsec Char ℘ Unit (Range → Lisp) :=
+  --   sorry
+  -- quoteP : Parsec Char ℘ Unit (Range → Lisp) :=
+  --   sorry
 
-def lispExprP : Parsec Char ℘ Unit (Range → Lisp) :=
-  let p : Parsers ℘ := {}
-  choice [
-    p.stringP,
-    p.listP,
-    p.s.attempt $ p.numP
-  ]
+mutual
+  partial def lispParser [Inhabited (Parsec Char ℘ Unit Lisp)]
+                         [Inhabited (Parsec Char ℘ Unit (Range → Lisp))]
+                         : Parsec Char ℘ Unit Lisp :=
+    withRange String lispExprP
+  partial def lispExprP [Inhabited (Parsec Char ℘ Unit Lisp)]
+                        [Inhabited (Parsec Char ℘ Unit (Range → Lisp))]
+                        : Parsec Char ℘ Unit (Range → Lisp) :=
+    let p : LinearParsers ℘ := {}
+    choiceP [
+      p.stringP,
+      listP --,
+      -- p.s.attempt $ p.numP
+    ]
+  partial def listP [Inhabited (Parsec Char ℘ Unit Lisp)]
+                    [Inhabited (Parsec Char ℘ Unit (Range → Lisp))]
+                    : Parsec Char ℘ Unit (Range → Lisp) :=
+    let s := string_simple ℘
+    let p : LinearParsers ℘ := {}
+    s.label "list" $ do
+    -- let ys ← @sepEndBy (Parsec Char ℘ Unit) Lisp Char instAlternativeParsecT instInhabitedParsecT lispParser (p.ignore *> pure ' ')
+    let ys ← sepEndBy lispParser (p.ignore *> pure ' ')
+    pure $ fun r => Lisp.list (ys, r)
+end
 
 -- def lispParser ℘ [MonadParsec (Parsec Char ℘ Unit) ℘ String Unit Char] : Parsec Char ℘ Unit Lisp :=
 --   withRange String $ lispExprP ℘

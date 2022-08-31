@@ -33,8 +33,8 @@ def string (m : Type u → Type v) (℘ E β : Type u) {α : Type u} (x : α) [M
   MonadParsec.tokens ℘ E β (BEq.beq) x
 
 -- TODO: Move to YatimaStdLib or even to Lean 4
-def between [SeqLeft φ] [SeqRight φ] (f : φ α) (h : φ β) (g : φ γ) : φ β :=
-  f *> h <* g
+def between [SeqLeft φ] [SeqRight φ] (f : φ α) (h : φ β) (g : φ γ) : φ γ :=
+  f *> g <* h
 
 def liftSeq2 [Seq φ] [Functor φ] (f2 : α → β → γ) (x : φ α) : (Unit → φ β) → φ γ :=
   Seq.seq (Functor.map f2 x)
@@ -68,9 +68,29 @@ end
 -- def asum {f : Type u → Type v} {t : Type v → Type v} [Foldable t] [Alternative f] (fas : t (f α)) : f α :=
 --   Foldable.foldr (fun a b => a <|> b) Alternative.failure fas
 
-def choice {m : Type → Type v} {β σ E γ : Type} (ps : List (ParsecT m β σ E γ)) : ParsecT m β σ E γ :=
+-- TODO: Can we resort to finite Foldables and use Iterable in the combinators where we would otherwise use Foldable?
+-- That would be way better than Lists.
+
+-- TODO: I absolutely hate the fact that we're not properly universe-polymorphic. I think it's a ripple effect of buggy Foldable.
+-- And the fact that we're not doing universe-lifting for primitive types.
+
+def choiceP {m : Type → Type v} {β σ E γ : Type} (ps : List (ParsecT m β σ E γ)) : ParsecT m β σ E γ :=
   List.foldr (fun a b => a <|> b) Alternative.failure ps
 
 /- m-polymorphic choice -/
-def choiceP {m : Type → Type v} (σ α E β : Type) {γ : Type} (ps : List (m γ)) [MonadParsec m σ α E β] [Alternative m] : m γ :=
+def choice {m : Type → Type v} (σ α E β : Type) {γ : Type} (ps : List (m γ)) [MonadParsec m σ α E β] [Alternative m] : m γ :=
   List.foldr (fun a b => a <|> b) Alternative.failure ps
+
+/- m-polymorphic noneOf -/
+-- def noneOf {m : Type → Type v} [MonadParsec m σ α E β]
+
+def satisfy (m : Type u → Type v) (σ α E : Type u) {β : Type u} (f : β → Bool) [MonadParsec m σ α E β] : m β :=
+  MonadParsec.token σ α E (fun x => if f x then .some x else .none) []
+
+def anySingle (m : Type u → Type v) (σ α E : Type u) {β : Type u} [MonadParsec m σ α E β] : m β :=
+  satisfy m σ α E (fun _ => true)
+
+def noneOf (m : Type u → Type v) (σ α E : Type u) {β : Type u} (cs : List β) [BEq β] [MonadParsec m σ α E β] : m β :=
+  satisfy m σ α E $ fun c => match cs.indexOf? c with
+    | .none => true
+    | .some _ => false

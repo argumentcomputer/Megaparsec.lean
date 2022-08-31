@@ -68,14 +68,18 @@ def isSpace (x : Char) : Bool :=
 
 structure CharSimple where
   char (x : Char) : m Char := single m ℘ E α x
-  char' (x : Char) : m Char := choiceP ℘ α E Char [ char x.toLower, char x.toUpper ]
+  char' (x : Char) : m Char := choice ℘ α E Char [ char x.toLower, char x.toUpper ]
+  anySingle : m Char := anySingle m ℘ α E
   newline := char '\n'
   cr := char '\r'
   crlf : m String := string m ℘ E Char "\r\n"
   eol : m String :=
-    MonadParsec.label ℘ String E Char
+    MonadParsec.label ℘ α E Char
       "end of line" $
       (newline *> MonadParsec.tokens ℘ E Char (fun _ _ => true) "*") <|> crlf
+  eof : m Unit :=
+    MonadParsec.eof ℘ α E Char
+  noneOf (xs : List Char) := noneOf m ℘ α E xs
   tab : m Char := char '\t'
   hSpace : m String := MonadParsec.takeWhileP ℘ E (.some "horizontal whitespace") isHSpace
   dropHSpace : m Unit := void hSpace
@@ -90,5 +94,5 @@ structure CharSimple where
   space1 : m String := MonadParsec.takeWhile1P ℘ E (.some "whitespace") isSpace
   dropSpace1 : m Unit := void space1
 
-
+def char_simple (℘x : Type) [MonadParsec (Parsec Char ℘x Unit) ℘x String Unit Char] : CharSimple (Parsec Char ℘x Unit) ℘x Unit := {}
 def char_simple_pure : CharSimple (Parsec Char String Unit) String Unit := {}

@@ -145,17 +145,20 @@ instance : Alternative (ParsecT m β σ E) where
         (thunk ()) xi s cok (cerr.1, nge cerr.2) (eok.1, ng) (eerr.1, nge eerr.2)
     guess xi s cok cerr eok (eerr.1, fallback)
 
-open StreamErrors in
-open Outcome in
-instance : Alternative (Parsec β σ E) where
-  failure := fun _ s _ _ _ eerr => eerr.2 (.trivial s.offset Option.none []) s
-  orElse guess thunk :=
-    fun xi s cok cerr eok eerr =>
-      let fallback err ms :=
-        let nge ψ err' s' := ψ (mergeErrors err' err) (longestMatch ms s')
-        let ng x s' hs := eok.2 x s' (toHints s'.offset err ++ hs)
-        (thunk ()) xi s cok (cerr.1, nge cerr.2) (eok.1, ng) (eerr.1, nge eerr.2)
-    guess xi s cok cerr eok (eerr.1, fallback)
+-- open StreamErrors in
+-- open Outcome in
+-- instance : Alternative (Parsec β σ E) where
+--   failure := fun _ s _ _ _ eerr => eerr.2 (.trivial s.offset Option.none []) s
+--   orElse guess thunk :=
+--     fun xi s cok cerr eok eerr =>
+--       let fallback err ms :=
+--         let nge ψ err' s' := ψ (mergeErrors err' err) (longestMatch ms s')
+--         let ng x s' hs := eok.2 x s' (toHints s'.offset err ++ hs)
+--         (thunk ()) xi s cok (cerr.1, nge cerr.2) (eok.1, ng) (eerr.1, nge eerr.2)
+--     guess xi s cok cerr eok (eerr.1, fallback)
+
+instance : Inhabited (ParsecT m β σ E γ) where
+  default := Alternative.failure
 
 ---=========================================================--
 ---================= IMPORTANT FUNCTIONS ===================--
