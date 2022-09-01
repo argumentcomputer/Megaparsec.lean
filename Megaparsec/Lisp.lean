@@ -104,7 +104,7 @@ structure LinearParsers where
       (c.noneOf "\r\n".data) *>
       (c.eol <|> (c.eof *> pure "")) *> pure ';'
   -- ignore := (some' ℘ (c.space1 <|> commentP))
-  ignore := some' ℘ (c.char ' ' <|> commentP)
+  ignore := many' ℘ (c.char ' ' <|> commentP)
   -- numP : Parsec Char ℘ Unit (Range → Lisp) :=
   --   sorry
   -- identifierP : Parsec Char ℘ Unit (Range → Lisp) :=
