@@ -76,16 +76,28 @@ def main : IO Unit := do
   -- LISP!
   let lp : LinearParsers String := {}
 
+  IO.println "Is many bugged?!"
+  let _many : (Bool × Either Unit (List String)) ← parseTestP (many' String (lp.s.stringP "Yatima")) ""
+  let _many : (Bool × Either Unit (List String)) ← parseTestP (many' String (lp.s.stringP "Yatima")) "YatimaYatimaYat33ma"
+
+  IO.println "Is some bugged?!"
+  let _some : (Bool × Either Unit (List String)) ← parseTestP (some' String (lp.s.stringP "Yatima")) ""
+  let _some : (Bool × Either Unit (List String)) ← parseTestP (some' String (lp.s.stringP "Yatima")) "YatimaYatimaYat33ma"
+
+  IO.println "Let's check that sepEndBy1' works..."
+  let _dbg2 : (Bool × Either Unit (List String)) ← parseTestP (sepEndBy1' String (lp.s.stringP "yatima") lp.ignore) "yatima yatima"
+
   IO.println "Let's see if Lisp sub-parsers work?"
-  let _dbg : (Bool × Either Unit Unit) ← parseTestP (lp.ignore) "   "
-  let _dbg1 : (Bool × Either Unit Unit) ← parseTestP (lp.ignore) "; hello, world!"
+  let _dbg : (Bool × Either Unit (List Char)) ← parseTestP (lp.ignore) "   "
+  let _dbg1 : (Bool × Either Unit (List Char)) ← parseTestP (lp.ignore) "  ; hello, world!"
   if _dbg.1 && _dbg1.1 then
     IO.println "Whitespace and comment works!"
   else
     IO.println "There's a bug."
 
   IO.println "Let's parse some Lisp?"
-  let _xxxx : (Bool × Either Unit Lisp) ← parseTestP (lispParser String) "( \"a\" )"
-  -- let _xxxx : (Bool × Either Unit Lisp) ← parseTestP (lispParser String) "(\"hello\" (\"beautiful\" \"world\"))"
+  -- let _xxxx : (Bool × Either Unit Lisp) ← parseTestP (lispParser String) "(((\"a\") \"b\")) ; lol)"
+  -- let _xxxx : (Bool × Either Unit Lisp) ← parseTestP (lispParser String) "(\"a\" )"
+  let _xxxx : (Bool × Either Unit Lisp) ← parseTestP (lispParser String) "(\"hello\" (\"beautiful\" \"world\")) ; ())(lol n1 bug ))())"
 
   IO.println "FIN"
