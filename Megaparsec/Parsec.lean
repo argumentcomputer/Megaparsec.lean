@@ -6,6 +6,7 @@ import Megaparsec.Errors.StreamErrors
 -- import Megaparsec.Errors.StreamErrors
 import Megaparsec.Ok
 import Megaparsec.ParserState
+import Megaparsec.Streamable
 import Straume
 import Straume.Chunk
 import Straume.Coco
@@ -23,6 +24,7 @@ open Megaparsec.Errors
 -- open Megaparsec.Errors.StreamErrors
 open Megaparsec.Ok
 open Megaparsec.ParserState
+open Megaparsec.Streamable
 
 open Straume
 open Straume.Flood
@@ -168,7 +170,7 @@ def runParserT' {m : Type u → Type v} {β σ E γ : Type u}
     | .err e => (s₁, .left (toBundle s₀ $ List.toNEList e s₁.parseErrors))
 
 def parseTestTP {m : Type → Type v} {β σ E : Type} {γ : Type}
-                (p : ParsecT m β σ E γ) (xs : σ) (srcName := "(test run)") [ToString E] [ToString β] [ToString γ] [Monad m] [MonadLiftT m IO]
+                (p : ParsecT m β σ E γ) (xs : σ) (srcName := "(test run)") [ToString E] [ToString β] [ToString γ] [Monad m] [MonadLiftT m IO] [Streamable σ]
                 : IO (Bool × Either Unit γ) := do
   let reply ← liftM $ runParserT' p (initialState srcName xs)
   match reply.2 with
@@ -189,11 +191,10 @@ def parseP (p : Parsec β σ E γ) (srcName : String) (xs : σ) :=
   runParserP p srcName xs
 
 /- Test some parser polymorphically. -/
-def parseTestP (p : Parsec β σ E γ) (xs : σ) [ToString γ]
-               : IO (Bool × Either Unit γ) :=
+def parseTestP (p : Parsec β σ E γ) [ToString γ] [ToString β] [ToString E]
+  (xs : σ) [Streamable σ] : IO (Bool × Either Unit γ) :=
   match parseP p "" xs with
-  -- TODO: Learn to print errors!
-  | .left _e => IO.println "There were some errors." >>= fun _ => pure $ (false, Either.left ())
+  | .left es => IO.println s!"{es}" >>= fun _ => pure $ (false, Either.left ())
   | .right y => IO.println y >>= fun _ => pure $ (true, Either.right y)
 
 ---===========================================================--
