@@ -202,11 +202,10 @@ def parseP (p : Parsec β σ E γ) (srcName : String) (xs : σ) :=
   runParserP p srcName xs
 
 /- Test some parser polymorphically. -/
-def parseTestP (p : Parsec β σ E γ) (xs : σ) [ToString γ]
+def parseTestP (p : Parsec β σ E γ) (xs : σ) [ToString γ] [ToString (ParseErrorBundle β σ E)]
                : IO (Bool × Either Unit γ) :=
   match parseP p "" xs with
-  -- TODO: Learn to print errors!
-  | .left _e => IO.println "There were some errors." >>= fun _ => pure $ (false, Either.left ())
+  | .left e => IO.println s!"{e}" >>= fun _ => pure $ (false, Either.left ())
   | .right y => IO.println y >>= fun _ => pure $ (true, Either.right y)
 
 ---===========================================================--

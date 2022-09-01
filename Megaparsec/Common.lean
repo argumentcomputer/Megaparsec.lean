@@ -57,9 +57,10 @@ partial def sepBy1 [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep 
 partial def sepBy [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep : φ β) : φ (List α) :=
   sepBy1 p sep <|> pure []
 
+-- TODO: https://zulip.yatima.io/#narrow/stream/10-lean/topic/_spec_10.20constant.3F/near/19689
 mutual
   partial def sepEndBy1 [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep : φ β) : φ (List α) :=
-    liftSeq2 List.cons p fun () => (sep *> sepEndBy p sep)
+    liftSeq2 List.cons p fun () => ((sep *> sepEndBy p sep) <|> pure [])
   partial def sepEndBy [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep : φ β) : φ (List α) :=
     sepEndBy1 p sep <|> pure []
 end

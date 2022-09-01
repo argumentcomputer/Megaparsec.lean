@@ -7,6 +7,7 @@ import Megaparsec.Errors.Bundle
 import YatimaStdLib
 import Straume.Coco
 import Megaparsec.Char
+import Megaparsec.Lisp
 
 open LSpec
 open Megaparsec.Parsec
@@ -15,6 +16,7 @@ open Megaparsec.Errors.Bundle
 open MonadParsec
 open Megaparsec.ParserState
 open Megaparsec.Char
+open Megaparsec.Lisp
 
 open Megaparsec.Common
 
@@ -70,5 +72,20 @@ def main : IO Unit := do
 
   IO.println "This stuff is also exported for your convenience."
   let _xxx : (Bool × Either Unit Char) ← parseTestP (char_simple_pure.char' 'Y') "yatima!"
+
+  -- LISP!
+  let lp : LinearParsers String := {}
+
+  IO.println "Let's see if Lisp sub-parsers work?"
+  let _dbg : (Bool × Either Unit Unit) ← parseTestP (lp.ignore) "   "
+  let _dbg1 : (Bool × Either Unit Unit) ← parseTestP (lp.ignore) "; hello, world!"
+  if _dbg.1 && _dbg1.1 then
+    IO.println "Whitespace and comment works!"
+  else
+    IO.println "There's a bug."
+
+  IO.println "Let's parse some Lisp?"
+  let _xxxx : (Bool × Either Unit Lisp) ← parseTestP (lispParser String) "( \"a\" )"
+  -- let _xxxx : (Bool × Either Unit Lisp) ← parseTestP (lispParser String) "(\"hello\" (\"beautiful\" \"world\"))"
 
   IO.println "FIN"
