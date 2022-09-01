@@ -62,7 +62,7 @@ def main : IO Unit := do
     let _nl ← (string Q S Unit Char "\n")
     let _eos ← (MonadParsec.eof S String Unit Char)
     pure $ res1 ++ res2
-  IO.println "Let's see if @ixhaedron's test passes."
+  IO.println "Let's see if @ixahedron's test passes."
   let _ix : (Bool × Either Unit String) ← parseTestTP abcdpnl bh
   let h1 ← IO.FS.Handle.mk (System.mkFilePath ["./Tests", "abcd-no-nl.txt"]) IO.FS.Mode.read false
   let _ixx : (Bool × Either Unit String) ← parseTestTP (string Q S Unit Char "abcd" <* MonadParsec.eof S String Unit Char) ("", h1)
