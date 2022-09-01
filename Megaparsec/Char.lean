@@ -16,7 +16,9 @@ namespace Megaparsec.Char
 
 universe v
 
-variable (m : Type → Type v) (℘ E : Type) (α : Type := String) [MonadParsec m ℘ α E Char] [MonadParsec m ℘ String E Char] [Alternative m]
+variable (m : Type → Type v) (℘ E : Type) (α : Type := String)
+         [MonadParsec m ℘ α E Char] [MonadParsec m ℘ String E Char]
+         [Alternative m]
 
 structure Spaces where
   space0020 := ' '
@@ -85,6 +87,10 @@ structure CharSimple where
   dropHSpace : m Unit := void hSpace
   visibleHSpace : m String := MonadParsec.takeWhileP ℘ E (.some "visible horizontal whitespace") isVisibleHSpace
   dropVisibleHSpace : m Unit := void visibleHSpace
+  -- TODO: space doesn't work properly (doesn't consume any input)
+  -- Could the bug be in takeWhileP?!
+  --
+  -- Maybe Inhabited deriving doesn't work properly?
   space : m String := MonadParsec.takeWhileP ℘ E (.some "whitespace") isSpace
   dropSpace : m Unit := void space
   hSpace1 : m String := MonadParsec.takeWhile1P ℘ E (.some "horizontal whitespace") isHSpace
@@ -96,3 +102,7 @@ structure CharSimple where
 
 def char_simple (℘x : Type) [MonadParsec (Parsec Char ℘x Unit) ℘x String Unit Char] : CharSimple (Parsec Char ℘x Unit) ℘x Unit := {}
 def char_simple_pure : CharSimple (Parsec Char String Unit) String Unit := {}
+
+def char_parsecT (mx : Type → Type v) (℘x : Type)
+                 [MonadParsec (ParsecT mx Char ℘x Unit) ℘x String Unit Char]
+                 : CharSimple (ParsecT mx Char ℘x Unit) ℘x Unit := {}

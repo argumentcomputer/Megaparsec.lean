@@ -74,18 +74,18 @@ def main : IO Unit := do
   let _xxx : (Bool × Either Unit Char) ← parseTestP (char_simple_pure.char' 'Y') "yatima!"
 
   -- LISP!
-  let lp : LinearParsers String := {}
+  let lp : LispLinearParsers Id String := {}
 
   IO.println "Is many bugged?!"
-  let _many : (Bool × Either Unit (List String)) ← parseTestP (many' String (lp.s.stringP "Yatima")) ""
-  let _many : (Bool × Either Unit (List String)) ← parseTestP (many' String (lp.s.stringP "Yatima")) "YatimaYatimaYat33ma"
+  let _many : (Bool × Either Unit (List String)) ← parseTestP (many' Id String (lp.s.stringP "Yatima")) ""
+  let _many : (Bool × Either Unit (List String)) ← parseTestP (many' Id String (lp.s.stringP "Yatima")) "YatimaYatimaYat33ma"
 
   IO.println "Is some bugged?!"
-  let _some : (Bool × Either Unit (List String)) ← parseTestP (some' String (lp.s.stringP "Yatima")) ""
-  let _some : (Bool × Either Unit (List String)) ← parseTestP (some' String (lp.s.stringP "Yatima")) "YatimaYatimaYat33ma"
+  let _some : (Bool × Either Unit (List String)) ← parseTestP (some' Id String (lp.s.stringP "Yatima")) ""
+  let _some : (Bool × Either Unit (List String)) ← parseTestP (some' Id String (lp.s.stringP "Yatima")) "YatimaYatimaYat33ma"
 
   IO.println "Let's check that sepEndBy1' works..."
-  let _dbg2 : (Bool × Either Unit (List String)) ← parseTestP (sepEndBy1' String (lp.s.stringP "yatima") lp.ignore) "yatima yatima"
+  let _dbg2 : (Bool × Either Unit (List String)) ← parseTestP (sepEndBy1' Id String (lp.s.stringP "yatima") lp.ignore) "yatima yatima"
 
   IO.println "Let's see if Lisp sub-parsers work?"
   let _dbg : (Bool × Either Unit (List Char)) ← parseTestP (lp.ignore) "   "
@@ -98,6 +98,6 @@ def main : IO Unit := do
   IO.println "Let's parse some Lisp?"
   -- let _xxxx : (Bool × Either Unit Lisp) ← parseTestP (lispParser String) "(((\"a\") \"b\")) ; lol)"
   -- let _xxxx : (Bool × Either Unit Lisp) ← parseTestP (lispParser String) "(\"a\" )"
-  let _xxxx : (Bool × Either Unit Lisp) ← parseTestP (lispParser String) "(\"hello\" (\"beautiful\" \"world\")) ; ())(lol n1 bug ))())"
+  let _xxxx : (Bool × Either Unit Lisp) ← parseTestP (lispParser Id String) "(\"hello\" (\"beautiful\" \"world\")) ; ())(lol n1 bug ))())"
 
   IO.println "FIN"

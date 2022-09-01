@@ -14,8 +14,6 @@ open Megaparsec.Common
 
 namespace Megaparsec.String
 
--- variable (℘ : Type) (m : Type → Type 1 := m) [MonadParsec m ℘ String Unit Char]
-
 variable (m : Type → Type v) (℘ E : Type) [MonadParsec m ℘ String E Char]
 
 def swap (a : Char) (b : Char) (xs : String) : String :=
@@ -46,3 +44,7 @@ structure StringSimple where
 
 def string_simple (℘x : Type) [MonadParsec (Parsec Char ℘x Unit) ℘x String Unit Char] : StringSimple (Parsec Char ℘x Unit) ℘x Unit := {}
 def string_simple_pure : StringSimple (Parsec Char String Unit) String Unit := {}
+
+def string_parsecT (mx : Type → Type v) (℘x : Type)
+                   [MonadParsec (ParsecT mx Char ℘x Unit) ℘x String Unit Char]
+                   : StringSimple (ParsecT mx Char ℘x Unit) ℘x Unit := {}

@@ -199,6 +199,10 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
         (if n == 0 then eok.2 else cok.2) r s' []
       else
         let got₀ := match NEList.nonEmpty (Iterable.toList r) with
+        -- TODO: There is a significant discrepancy between this implementaiton and Haskell
+        -- Because here we handle empty r, whereas the original implementation doesn't.
+        --
+        -- I have a feeling it's a bug in the original implementation.
         | .none => ErrorItem.label (nelstr 'F' "ailed to parse empty input")
         | .some nel => ErrorItem.tokens nel
         eerr.2 (unexpect s.offset got₀) s
