@@ -76,6 +76,9 @@ def main : IO Unit := do
   IO.println "Is eol buggy?"
   let _eol ← parseTestP char_simple_pure.eol "\n"
 
+  IO.println "Is eof buggy?"
+  let _eof ← parseTestP char_simple_pure.eof ""
+
   -- LISP!
   let lp : LispLinearParsers Id String := {}
 

@@ -83,14 +83,12 @@ structure LispLinearParsers where
   commentP := s.label "comment" $
     c.char ';' *>
     manyP m ℘
-      ((c.noneOf "\r\n".data) >>= fun x => do
-        dbg_trace x
-        pure x
-      ) *>
+      (c.noneOf "\r\n".data) *>
       (c.eol <|> (c.eof *> pure ""))
   -- TODO: c.space1 doesn't work for some reason
   -- ignore := (some' ℘ (c.space1 <|> commentP))
-  ignore := manyP m ℘ (c.char ' ' <|> (commentP *> c.char ';'))
+  -- TODO: `>>= fun x => do dbg_trace; pure x` should be a common parser combinator
+  ignore := manyP m ℘ (c.char ' ' <|> (commentP *> pure ';'))
   -- numP : Parsec Char ℘ Unit (Range → Lisp) :=
   --   sorry
   -- identifierP : Parsec Char ℘ Unit (Range → Lisp) :=
