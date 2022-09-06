@@ -32,7 +32,7 @@ def single (m : Type u → Type v) (℘ E α : Type u) (x : β) [MonadParsec m �
 def string (m : Type u → Type v) (℘ E β : Type u) {α : Type u} (x : α) [MonadParsec m ℘ α E β] [BEq α] : m α :=
   MonadParsec.tokens ℘ E β (BEq.beq) x
 
--- TODO: Move to YatimaStdLib or even to Lean 4
+-- TODO: Move the following several fucntions to YatimaStdLib or even to Lean 4
 def between [SeqLeft φ] [SeqRight φ] (f : φ α) (h : φ β) (g : φ γ) : φ γ :=
   f *> g <* h
 
@@ -44,25 +44,83 @@ def void [Functor φ] (fx : φ a) : φ Unit :=
 
 
 -- TODO: A lot of thunks here. Support monadic versions of these combinators.
+-- TODO: Why doesn't generic version work? https://zulip.yatima.io/#narrow/stream/10-lean/topic/_spec_10.20constant.3F/near/19689
+-- mutual
+--   partial def some [Alternative φ] [Inhabited (φ (List α))] (p : φ α) : φ (List α) :=
+--     liftSeq2 List.cons p $ fun () => many p
+--   partial def many [Alternative φ] [Inhabited (φ (List α))] (p : φ α) : φ (List α) :=
+--     some p <|> pure []
+-- end
+-- partial def many1 [Alternative φ] [Inhabited (φ (List α))] : φ α → φ (List α) := some
+
+-- partial def sepBy1 [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep : φ β) : φ (List α) :=
+--   liftSeq2 List.cons p fun () => (many $ sep *> p)
+-- partial def sepBy [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep : φ β) : φ (List α) :=
+--   sepBy1 p sep <|> pure []
+
+-- mutual
+--   partial def sepEndBy1 [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep : φ β) : φ (List α) :=
+--     liftSeq2 List.cons p fun () => ((sep *> sepEndBy p sep) <|> pure [])
+--   partial def sepEndBy [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep : φ β) : φ (List α) :=
+--     sepEndBy1 p sep <|> pure []
+-- end
+
 mutual
-  partial def some [Alternative φ] [Inhabited (φ (List α))] (p : φ α) : φ (List α) :=
-    liftSeq2 List.cons p $ fun () => many p
-  partial def many [Alternative φ] [Inhabited (φ (List α))] (p : φ α) : φ (List α) :=
-    some p <|> pure []
+  partial def some' (p : Parsec β ℘ Unit x) : Parsec β ℘ Unit (List x) := do
+    let y ← p
+    let ys ← many' p
+    pure $ List.cons y ys
+  partial def many' (p : Parsec β ℘ Unit x) : Parsec β ℘ Unit (List x) := do
+    some' p <|> pure []
 end
-partial def many1 [Alternative φ] [Inhabited (φ (List α))] : φ α → φ (List α) := some
+partial def many1' (p : Parsec β ℘ Unit x) : Parsec β ℘ Unit (List x) := some' p
 
-partial def sepBy1 [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep : φ β) : φ (List α) :=
-  liftSeq2 List.cons p fun () => (many $ sep *> p)
-partial def sepBy [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep : φ β) : φ (List α) :=
-  sepBy1 p sep <|> pure []
-
--- TODO: https://zulip.yatima.io/#narrow/stream/10-lean/topic/_spec_10.20constant.3F/near/19689
 mutual
-  partial def sepEndBy1 [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep : φ β) : φ (List α) :=
-    liftSeq2 List.cons p fun () => ((sep *> sepEndBy p sep) <|> pure [])
-  partial def sepEndBy [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep : φ β) : φ (List α) :=
-    sepEndBy1 p sep <|> pure []
+  partial def some (m : Type u → Type v) (σ α β E : Type u) {γ : Type u} (p : m γ)
+                   [MonadParsec m σ α E β] [Monad m] [Alternative m]
+                   : m (List γ) := do
+    let y ← p
+    let ys ← many m σ α β E p
+    pure $ List.cons y ys
+  partial def many (m : Type u → Type v) (σ α β E : Type u) {γ : Type u} (p : m γ)
+                   [MonadParsec m σ α E β] [Monad m] [Alternative m]
+                   : m (List γ) :=
+    some m σ α β E p <|> pure []
+end
+partial def many1 (m : Type u → Type v) (σ α β E : Type u) {γ : Type u} (p : m γ)
+                  [MonadParsec m σ α E β] [Monad m] [Alternative m]
+                  : m (List γ) :=
+    some m σ α β E p
+
+-- mutual
+--   partial def sepEndBy1 [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep : φ β) : φ (List α) :=
+--     liftSeq2 List.cons p fun () => ((sep *> sepEndBy p sep) <|> pure [])
+--   partial def sepEndBy [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep : φ β) : φ (List α) :=
+--     sepEndBy1 p sep <|> pure []
+-- end
+
+mutual
+  partial def sepEndBy (m : Type u → Type v) (σ α β E : Type u) {γ : Type u} (p : m γ) (sep : m γ)
+                       [MonadParsec m σ α E β] [Monad m] [Alternative m]
+                       : m (List γ) :=
+    sepEndBy1 m σ α β E p sep <|> pure []
+
+  partial def sepEndBy1 (m : Type u → Type v) (σ α β E : Type u) {γ : Type u} (p : m γ) (sep : m γ)
+                        [MonadParsec m σ α E β] [Monad m] [Alternative m]
+                        : m (List γ) := do
+    let y ← p
+    let ys ← ((sep *> sepEndBy m σ α β E p sep) <|> pure [])
+    pure $ List.cons y ys
+end
+
+mutual
+  partial def sepEndBy' (p : Parsec β ℘ Unit x) (sep : Parsec β ℘ Unit s) : Parsec β ℘ Unit (List x) :=
+    sepEndBy1' p sep <|> pure []
+
+  partial def sepEndBy1' (p : Parsec β ℘ Unit x) (sep : Parsec β ℘ Unit s) : Parsec β ℘ Unit (List x) := do
+    let y ← p
+    let ys ← ((sep *> sepEndBy' p sep) <|> pure [])
+    pure $ List.cons y ys
 end
 
 -- -- TODO: Our foldable is not foldable: https://zulip.yatima.io/#narrow/stream/24-yatima-tools/topic/.5BYatimaStdLib.2Elean.5D.20chat/near/19242
@@ -75,7 +133,7 @@ end
 -- TODO: I absolutely hate the fact that we're not properly universe-polymorphic. I think it's a ripple effect of buggy Foldable.
 -- And the fact that we're not doing universe-lifting for primitive types.
 
-def choiceP {m : Type → Type v} {β σ E γ : Type} (ps : List (ParsecT m β σ E γ)) : ParsecT m β σ E γ :=
+def choice' {m : Type → Type v} {β σ E γ : Type} (ps : List (ParsecT m β σ E γ)) : ParsecT m β σ E γ :=
   List.foldr (fun a b => a <|> b) Alternative.failure ps
 
 /- m-polymorphic choice -/

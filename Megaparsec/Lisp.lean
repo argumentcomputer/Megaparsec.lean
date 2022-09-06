@@ -51,25 +51,23 @@ instance : ToString Lisp where
 
 variable (m : Type → Type v) (℘ : Type)
   [MonadParsec (ParsecT m Char ℘ Unit) ℘ String Unit Char]
-  [Inhabited ℘]
   [Inhabited (ParsecT m Char ℘ Unit Lisp)]
   [Inhabited (ParsecT m Char ℘ Unit (Range → Lisp))]
 
 mutual
-  -- TODO: https://zulip.yatima.io/#narrow/stream/10-lean/topic/_spec_10.20constant.3F/near/19689
-  partial def some' (p : ParsecT m Char ℘ Unit x)
-                    : ParsecT m Char ℘ Unit (List x) := do
+  partial def someP (p : ParsecT m Char ℘ Unit γ) : ParsecT m Char ℘ Unit (List γ) := do
     let y ← p
-    let ys ← many p
-    pure $ List.cons y ys
-  partial def many' (p : ParsecT m Char ℘ Unit x)
-                    : ParsecT m Char ℘ Unit (List x) := do
-    some' p <|> pure []
+    let ys ← manyP p
+    pure $ y :: ys
+  partial def manyP (p : ParsecT m Char ℘ Unit γ) : ParsecT m Char ℘ Unit (List γ) := do
+    someP p <|> pure []
+  partial def sepEndBy1P (p : ParsecT m Char ℘ Unit γ) (sep : ParsecT m Char ℘ Unit γ') := do
+    let y ← p
+    let ys ← (sep *> sepEndByP p sep)
+    pure $ y :: ys
+  partial def sepEndByP (p : ParsecT m Char ℘ Unit γ) (sep : ParsecT m Char ℘ Unit γ') :=
+    sepEndBy1P p sep <|> pure []
 end
-
-partial def many1' (p : ParsecT m Char ℘ Unit x)
-                   : ParsecT m Char ℘ Unit (List x) :=
-  some' m ℘ p
 
 structure LispLinearParsers where
   -- s : StringSimple (P ℘) ℘ Unit := {}
@@ -80,29 +78,27 @@ structure LispLinearParsers where
     s.label "string" $ do
     let (str : String) ←
       between (c.char '"') (c.char '"') $
-        String.mk <$> (many $ quoteAnyChar <|> c.noneOf "\\\"".data)
+        String.mk <$> (manyP m ℘ $ quoteAnyChar <|> c.noneOf "\\\"".data)
     pure $ fun r => Lisp.string (str, r)
   commentP := s.label "comment" $
     c.char ';' *>
-    many' m ℘
-      (c.noneOf "\r\n".data) *>
-      (c.eol <|> (c.eof *> pure "")) *> pure ';'
-  ignore := many' m ℘ (c.char ' ' <|> commentP)
+    manyP m ℘
+      ((c.noneOf "\r\n".data) >>= fun x => do
+        dbg_trace x
+        pure x
+      ) *>
+      (c.eol <|> (c.eof *> pure ""))
+  -- TODO: c.space1 doesn't work for some reason
+  -- ignore := (some' ℘ (c.space1 <|> commentP))
+  ignore := manyP m ℘ (c.char ' ' <|> (commentP *> c.char ';'))
+  -- numP : Parsec Char ℘ Unit (Range → Lisp) :=
+  --   sorry
+  -- identifierP : Parsec Char ℘ Unit (Range → Lisp) :=
+  --   sorry
+  -- quoteP : Parsec Char ℘ Unit (Range → Lisp) :=
+  --   sorry
 
 mutual
-
-  -- TODO: https://zulip.yatima.io/#narrow/stream/10-lean/topic/_spec_10.20constant.3F/near/19689
-  partial def sepEndBy' (p : ParsecT m Char ℘ Unit x)
-                        (sep : ParsecT m Char ℘ Unit s)
-                        : ParsecT m Char ℘ Unit (List x) :=
-    sepEndBy1' p sep <|> pure []
-
-  partial def sepEndBy1' (p : ParsecT m Char ℘ Unit x)
-                         (sep : ParsecT m Char ℘ Unit s)
-                         : ParsecT m Char ℘ Unit (List x) := do
-    let y ← p
-    let ys ← ((sep *> sepEndBy' p sep) <|> pure [])
-    pure $ List.cons y ys
 
   partial def lispParser : ParsecT m Char ℘ Unit Lisp :=
     withRange String lispExprP
@@ -111,14 +107,15 @@ mutual
     let p : LispLinearParsers m ℘ := {}
     p.s.label "list" $ do
     between (p.c.char '(') (p.c.char ')') $ do
-      let ys ← sepEndBy' lispParser p.ignore
+      let ys ← sepEndByP m ℘ lispParser p.ignore
       pure $ fun r => Lisp.list (ys, r)
 
   partial def lispExprP : ParsecT m Char ℘ Unit (Range → Lisp) :=
     let p : LispLinearParsers m ℘ := {}
-    choiceP [
-      p.stringP,
-      listP
+    choice' [
+      p.s.attempt p.stringP,
+      listP --,
+      -- p.s.attempt $ p.numP
     ]
 
 end

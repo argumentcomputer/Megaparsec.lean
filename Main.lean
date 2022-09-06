@@ -73,19 +73,22 @@ def main : IO Unit := do
   IO.println "This stuff is also exported for your convenience."
   let _xxx : (Bool × Either Unit Char) ← parseTestP (char_simple_pure.char' 'Y') "yatima!"
 
+  IO.println "Is eol buggy?"
+  let _eol ← parseTestP char_simple_pure.eol "\n"
+
   -- LISP!
   let lp : LispLinearParsers Id String := {}
 
   IO.println "Is many bugged?!"
-  let _many : (Bool × Either Unit (List String)) ← parseTestP (many' Id String (lp.s.stringP "Yatima")) ""
-  let _many : (Bool × Either Unit (List String)) ← parseTestP (many' Id String (lp.s.stringP "Yatima")) "YatimaYatimaYat33ma"
+  let _many : (Bool × Either Unit (List String)) ← parseTestP (many' (lp.s.stringP "Yatima")) ""
+  let _many : (Bool × Either Unit (List String)) ← parseTestP (many' (lp.s.stringP "Yatima")) "YatimaYatimaYat33ma"
 
   IO.println "Is some bugged?!"
-  let _some : (Bool × Either Unit (List String)) ← parseTestP (some' Id String (lp.s.stringP "Yatima")) ""
-  let _some : (Bool × Either Unit (List String)) ← parseTestP (some' Id String (lp.s.stringP "Yatima")) "YatimaYatimaYat33ma"
+  let _some : (Bool × Either Unit (List String)) ← parseTestP (some' (lp.s.stringP "Yatima")) ""
+  let _some : (Bool × Either Unit (List String)) ← parseTestP (some' (lp.s.stringP "Yatima")) "YatimaYatimaYat33ma"
 
   IO.println "Let's check that sepEndBy1' works..."
-  let _dbg2 : (Bool × Either Unit (List String)) ← parseTestP (sepEndBy1' Id String (lp.s.stringP "yatima") lp.ignore) "yatima yatima"
+  let _dbg2 : (Bool × Either Unit (List String)) ← parseTestP (sepEndBy1' (lp.s.stringP "yatima") lp.ignore) "yatima yatima"
 
   IO.println "Let's see if Lisp sub-parsers work?"
   let _dbg : (Bool × Either Unit (List Char)) ← parseTestP (lp.ignore) "   "

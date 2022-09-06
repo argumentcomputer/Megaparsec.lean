@@ -69,16 +69,17 @@ def isSpace (x : Char) : Bool :=
   isHSpace x || (List.any ['\n', '\r'] $ BEq.beq x)
 
 structure CharSimple where
+  s : StringSimple m ℘ E := {}
   char (x : Char) : m Char := single m ℘ E α x
   char' (x : Char) : m Char := choice ℘ α E Char [ char x.toLower, char x.toUpper ]
   anySingle : m Char := anySingle m ℘ α E
   newline := char '\n'
   cr := char '\r'
-  crlf : m String := string m ℘ E Char "\r\n"
+  crlf : m String := s.stringP "\r\n"
   eol : m String :=
     MonadParsec.label ℘ α E Char
       "end of line" $
-      (newline *> MonadParsec.tokens ℘ E Char (fun _ _ => true) "*") <|> crlf
+      (newline *> pure "\n") <|> crlf
   eof : m Unit :=
     MonadParsec.eof ℘ α E Char
   noneOf (xs : List Char) := noneOf m ℘ α E xs
