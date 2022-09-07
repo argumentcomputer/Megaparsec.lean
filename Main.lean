@@ -94,8 +94,8 @@ def main : IO Unit := do
   let _dbg2 : (Bool × Either Unit (List String)) ← parseTestP (sepEndBy1' (lp.s.stringP "yatima") lp.ignore) "yatima yatima"
 
   IO.println "Let's see if Lisp sub-parsers work?"
-  let _dbg : (Bool × Either Unit (List Char)) ← parseTestP (lp.ignore) "   "
-  let _dbg1 : (Bool × Either Unit (List Char)) ← parseTestP (lp.ignore) "  ; hello, world!"
+  let _dbg : (Bool × Either Unit (List String)) ← parseTestP (lp.ignore) "   "
+  let _dbg1 : (Bool × Either Unit (List String)) ← parseTestP (lp.ignore) "  ; hello, world!"
   if _dbg.1 && _dbg1.1 then
     IO.println "Whitespace and comment works!"
   else
