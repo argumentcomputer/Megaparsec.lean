@@ -33,6 +33,52 @@ Note that you could have used the same trick, but via `Seq` to substitute the re
 For example, you could have just as well written `(c.eol <|> c.eof *> pure "FIN")`.
 We wouldn't care, since the parsed value gets discarded anyway due to `<*` (left sparrow) operator between `stringP` and the sub-parser in question.
 
+## Running the parser
+
+To simply manually test the parser you wrote, you can use `runParseTestP`:
+
+```
+def testMyP : IO Unit := do
+  -- Succeeds
+  IO.println "Successful parsers."
+  let (true1, three) ← parseTestP myP "3 2 1"
+  let (true2, five) ← parseTestP myP "5|"
+  -- Fails
+  IO.println "Failing parsers."
+  let (false1, _notFive) ← parseTestP myP "5"
+  let (false2, _notFiftyFive) ← parseTestP myP "55|"
+
+  pure $ Unit.unit
+```
+
+It will also print some errors and results on the screen.
+
+Analogous function to simply run the parser and get the result of a parse is `parseP`.
+
+Just give it a parser, the stream (file) name from which you're parsing and a source which can either be a pure `String` or a `String` buffer (most likely, you want it to be empty) plus a file handle.
+
+A concrete, albeit too wordy, example of parsing straight from a file is:
+
+```lean
+  let file := System.mkFilePath ["./Tests", "abcd.txt"]
+  let h ← IO.FS.Handle.mk file IO.FS.Mode.read false
+  let bh := ("", h)
+  let S := (String × IO.FS.Handle)
+  let Q := ParsecT IO Char S Unit
+  let abcdpnl := do
+    let res1 ← (string Q S Unit Char "ab")
+    let res2 ← (string Q S Unit Char "cd")
+    let _nl ← (string Q S Unit Char "\n")
+    let _eos ← (MonadParsec.eof S String Unit Char)
+    pure $ res1 ++ res2
+  let _ix : (Bool × Either Unit String) ← parseTestTP abcdpnl bh
+```
+
+There are more ergonomic ways to do it.
+
+Also, file-based parsing allows you to parse from files that are larger-than-RAM thanks to Straume library.
+(We didn't test this extensively yet!)
+
 ## Exercise for the reader
 
 Check out stuff that `MonadParsec` exports, look around `char_simple` and `string_simple` APIs in `Megaparsec/Char.lean` and `Megaparsec/String.lean` respectively, and patch the example code so that it would _tolerate, but not require_ padding with spaces and the "end-of-line bar" while parsing a digit out of the input.
@@ -91,3 +137,7 @@ I tried both nix and GHCup, both seem to be currently broken, so I disabled HLS 
 ## Lean is strict and terms don't have a single type in Lean
 
 You can't port Haskell code to Lean one to one!
+
+```
+
+```
