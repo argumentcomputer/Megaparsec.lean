@@ -37,7 +37,7 @@ We wouldn't care, since the parsed value gets discarded anyway due to `<*` (left
 
 To simply manually test the parser you wrote, you can use `runParseTestP`:
 
-```
+```lean
 def testMyP : IO Unit := do
   -- Succeeds
   IO.println "Successful parsers."
