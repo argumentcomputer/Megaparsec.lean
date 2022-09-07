@@ -8,6 +8,7 @@ import YatimaStdLib
 import Straume.Coco
 import Megaparsec.Char
 import Megaparsec.Lisp
+import Megaparsec.String
 
 open LSpec
 open Megaparsec.Parsec
@@ -17,6 +18,7 @@ open MonadParsec
 open Megaparsec.ParserState
 open Megaparsec.Char
 open Megaparsec.Lisp
+open Megaparsec.String
 
 open Megaparsec.Common
 
@@ -24,9 +26,43 @@ private def cs : Parsec Char String Unit Char :=
   let cs : CharSimple (Parsec Char String Unit) String Unit := {}
   cs.char' 'y'
 
+def s := string_simple_pure
+def c := char_simple_pure
+
+def laLexer : Parsec Char String Unit String :=
+  s.lookAhead ((s.stringP "|" <* (c.eol <|> c.eof *> pure "FIN")) <|> s.stringP " ")
+
+def numP : Parsec Char String Unit Nat :=
+  (c.oneOf "0123456789".data) >>= fun x => pure $ x.val.toNat - '0'.val.toNat
+
+def myP : Parsec Char String Unit (List Nat) :=
+  many' (numP <* laLexer)
+
+def testMyP : IO Unit := do
+  -- Succeeds
+  IO.println "Successful parsers."
+  let (true1, three) ← parseTestP myP "3 2 1"
+  let (true2, five) ← parseTestP myP "5|"
+  if true1 == true2 && true1 then
+    match three with
+    | .right (x :: _) => IO.println s!"{x}"
+    | _ => IO.println "3 parser fails"
+    match five with
+    | .right (x :: _) => IO.println s!"{x}"
+    | _ => IO.println "5 parser fails"
+  -- Fails
+  IO.println "Failing parsers."
+  let (false1, _notFive) ← parseTestP myP "5"
+  let (false2, _notFiftyFive) ← parseTestP myP "55|"
+  if false1 == false2 && (!false1) then
+    IO.println "The parsers that need to fail failed."
+
+  pure $ Unit.unit
+
 
 def main : IO Unit := do
   IO.println "Megaparsec demo!"
+  testMyP
   let P := Parsec Char String Unit
   let source := "yatimaaaa!"
   let bad := "yatimAaaa!"

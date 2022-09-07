@@ -153,3 +153,8 @@ def noneOf (m : Type u → Type v) (σ α E : Type u) {β : Type u} (cs : List �
   satisfy m σ α E $ fun c => match cs.indexOf? c with
     | .none => true
     | .some _ => false
+
+def oneOf (m : Type u → Type v) (σ α E : Type u) {β : Type u} (cs : List β) [BEq β] [MonadParsec m σ α E β] : m β :=
+  satisfy m σ α E $ fun c => match cs.indexOf? c with
+    | .none => false
+    | .some _ => true

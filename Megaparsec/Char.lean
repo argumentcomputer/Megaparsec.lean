@@ -35,6 +35,7 @@ structure CharSimple where
   eof : m Unit :=
     MonadParsec.eof ℘ α E Char
   noneOf (xs : List Char) := noneOf m ℘ α E xs
+  oneOf (xs : List Char) := oneOf m ℘ α E xs
   tab : m Char := char '\t'
 
 def char_simple (℘x : Type) [MonadParsec (Parsec Char ℘x Unit) ℘x String Unit Char] : CharSimple (Parsec Char ℘x Unit) ℘x Unit := {}
