@@ -72,6 +72,8 @@ A concrete example of parsing straight from a file is:
     buffed
 ```
 
+The `praseTP` function shall return either `ParseErrorBundle` or the parse result, which, in this case is `String`.
+
 Also, file-based parsing allows you to parse from files that are larger-than-RAM thanks to Straume library.
 (We didn't test this extensively yet!)
 
