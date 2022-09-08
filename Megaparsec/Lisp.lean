@@ -70,7 +70,6 @@ mutual
 end
 
 structure LispLinearParsers where
-  -- s : StringSimple (P ℘) ℘ Unit := {}
   s := string_parsecT m ℘
   c := char_parsecT m ℘
   quoteAnyChar := c.char '\\' *> c.anySingle
@@ -85,16 +84,7 @@ structure LispLinearParsers where
     manyP m ℘
       (c.noneOf "\r\n".data) *>
       (c.eol <|> (c.eof *> pure ""))
-  -- TODO: c.space1 doesn't work for some reason
-  -- ignore := (some' ℘ (c.space1 <|> commentP))
-  -- TODO: `>>= fun x => do dbg_trace; pure x` should be a common parser combinator
   ignore := manyP m ℘ (c.char ' ' *> pure " " <|> commentP)
-  -- numP : Parsec Char ℘ Unit (Range → Lisp) :=
-  --   sorry
-  -- identifierP : Parsec Char ℘ Unit (Range → Lisp) :=
-  --   sorry
-  -- quoteP : Parsec Char ℘ Unit (Range → Lisp) :=
-  --   sorry
 
 mutual
 
@@ -112,8 +102,7 @@ mutual
     let p : LispLinearParsers m ℘ := {}
     choice' [
       p.s.attempt p.stringP,
-      listP --,
-      -- p.s.attempt $ p.numP
+      listP
     ]
 
 end
