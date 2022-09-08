@@ -28,6 +28,8 @@ private def cs : Parsec Char String Unit Char :=
 
 def s := string_simple_pure
 def c := char_simple_pure
+def sIO := string_parsecT IO (String × IO.FS.Handle)
+def cIO := char_parsecT IO (String × IO.FS.Handle)
 
 def laLexer : Parsec Char String Unit String :=
   s.lookAhead ((s.stringP "|" <* (c.eol <|> c.eof *> pure "FIN")) <|> s.stringP " ")
@@ -102,6 +104,18 @@ def main : IO Unit := do
   let _ix : (Bool × Either Unit String) ← parseTestTP abcdpnl bh
   let h1 ← IO.FS.Handle.mk (System.mkFilePath ["./Tests", "abcd-no-nl.txt"]) IO.FS.Mode.read false
   let _ixx : (Bool × Either Unit String) ← parseTestTP (string Q S Unit Char "abcd" <* MonadParsec.eof S String Unit Char) ("", h1)
+
+  IO.println "Ergonomic version of @ixahedron's test."
+  let file := System.mkFilePath ["./Tests", "abcd.txt"]
+  let h ← IO.FS.Handle.mk file IO.FS.Mode.read false
+  let buffed := ("", h)
+  let res ← parseTP
+    (sIO.stringP "ab" *> sIO.stringP "cd" <* cIO.eol <* cIO.eof)
+    "abcd.txt"
+    buffed
+  match res with
+  | .right _ => IO.println "Ergonomic version works."
+  | .left _ => IO.println "Ergonomic version doesn't work."
 
   IO.println "We have also done a lot of work to export specified versions of things."
   let _xx : (Bool × Either Unit Char) ← parseTestP cs "Yatima!"

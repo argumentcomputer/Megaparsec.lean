@@ -57,24 +57,20 @@ Analogous function to simply run the parser and get the result of a parse is `pa
 
 Just give it a parser, the stream (file) name from which you're parsing and a source which can either be a pure `String` or a `String` buffer (most likely, you want it to be empty) plus a file handle.
 
-A concrete, albeit too wordy, example of parsing straight from a file is:
+A concrete example of parsing straight from a file is:
 
 ```lean
+  let sIO := string_parsecT IO (String × IO.FS.Handle)
+  let cIO := char_parsecT IO (String × IO.FS.Handle)
+
   let file := System.mkFilePath ["./Tests", "abcd.txt"]
   let h ← IO.FS.Handle.mk file IO.FS.Mode.read false
-  let bh := ("", h)
-  let S := (String × IO.FS.Handle)
-  let Q := ParsecT IO Char S Unit
-  let abcdpnl := do
-    let res1 ← (string Q S Unit Char "ab")
-    let res2 ← (string Q S Unit Char "cd")
-    let _nl ← (string Q S Unit Char "\n")
-    let _eos ← (MonadParsec.eof S String Unit Char)
-    pure $ res1 ++ res2
-  let _ix : (Bool × Either Unit String) ← parseTestTP abcdpnl bh
+  let buffed := ("", h)
+  let res ← parseTP
+    (sIO.stringP "ab" *> sIO.stringP "cd" <* cIO.eol <* cIO.eof)
+    "abcd.txt"
+    buffed
 ```
-
-There are more ergonomic ways to do it.
 
 Also, file-based parsing allows you to parse from files that are larger-than-RAM thanks to Straume library.
 (We didn't test this extensively yet!)
