@@ -3,14 +3,17 @@ open Lake DSL
 
 package Megaparsec
 
+@[defaultTarget]
+lean_lib Megaparsec
+
 require LSpec from git
-  "https://github.com/yatima-inc/LSpec.git" @ "77fc51697abeff937ffd20d2050723dc0fa1c8c0"
+  "https://github.com/yatima-inc/LSpec.git" @ "7e2d41644519e8c437fbe7461544eaa855738f73"
 
 require YatimaStdLib from git
-  "https://github.com/yatima-inc/YatimaStdLib.lean.git" @ "a2bbc9a48db7efd5d761a5b27f2cc6c1863b9622"
+  "https://github.com/yatima-inc/YatimaStdLib.lean.git" @ "9c362443e0d89eb96683b52a1caaf762049697c4"
 
 require Straume from git
-  "https://github.com/yatima-inc/straume/" @ "1f007dd57e8e0da6fe966f052be1f3724bd1281a"
+  "https://github.com/yatima-inc/straume/" @ "c1d72a24ae3a8a8e0bd7928001b55958e4b9113c"
 
 @[defaultTarget]
 lean_exe megaparsec {
