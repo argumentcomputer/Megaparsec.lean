@@ -4,6 +4,9 @@ structure Pos where
   pos : Nat
   deriving Repr, DecidableEq
 
+instance : ToString Pos where
+  toString x := s!"{x.pos}"
+
 export Pos (pos)
 
 instance : Add Pos where
