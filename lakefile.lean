@@ -7,7 +7,7 @@ package Megaparsec
 lean_lib Megaparsec
 
 require LSpec from git
-  "https://github.com/yatima-inc/LSpec.git" @ "7e2d41644519e8c437fbe7461544eaa855738f73"
+  "https://github.com/yatima-inc/LSpec.git" @ "c63610bb23451c7aa2faae17c71e8d162c6c616e"
 
 require YatimaStdLib from git
   "https://github.com/yatima-inc/YatimaStdLib.lean.git" @ "9c362443e0d89eb96683b52a1caaf762049697c4"
