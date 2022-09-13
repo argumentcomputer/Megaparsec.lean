@@ -150,11 +150,7 @@ def anySingle (m : Type u → Type v) (σ α E : Type u) {β : Type u} [MonadPar
   satisfy m σ α E (fun _ => true)
 
 def noneOf (m : Type u → Type v) (σ α E : Type u) {β : Type u} (cs : List β) [BEq β] [MonadParsec m σ α E β] : m β :=
-  satisfy m σ α E $ fun c => match cs.indexOf? c with
-    | .none => true
-    | .some _ => false
+  satisfy m σ α E $ fun c => (cs.indexOf? c).isNone
 
 def oneOf (m : Type u → Type v) (σ α E : Type u) {β : Type u} (cs : List β) [BEq β] [MonadParsec m σ α E β] : m β :=
-  satisfy m σ α E $ fun c => match cs.indexOf? c with
-    | .none => false
-    | .some _ => true
+  satisfy m σ α E $ fun c => (cs.indexOf? c).isSome
