@@ -32,35 +32,24 @@ def single (m : Type u → Type v) (℘ E α : Type u) (x : β) [MonadParsec m �
 def string (m : Type u → Type v) (℘ E β : Type u) {α : Type u} (x : α) [MonadParsec m ℘ α E β] [BEq α] : m α :=
   MonadParsec.tokens ℘ E β (BEq.beq) x
 
--- TODO: Move the following several fucntions to YatimaStdLib or even to Lean 4
-def between [SeqLeft φ] [SeqRight φ] (f : φ α) (h : φ β) (g : φ γ) : φ γ :=
-  f *> g <* h
-
-def liftSeq2 [Seq φ] [Functor φ] (f2 : α → β → γ) (x : φ α) : (Unit → φ β) → φ γ :=
-  Seq.seq (Functor.map f2 x)
-
-def void [Functor φ] (fx : φ a) : φ Unit :=
-  (fun _ => ()) <$> fx
-
-
 -- TODO: A lot of thunks here. Support monadic versions of these combinators.
 -- TODO: Why doesn't generic version work? https://zulip.yatima.io/#narrow/stream/10-lean/topic/_spec_10.20constant.3F/near/19689
 -- mutual
 --   partial def some [Alternative φ] [Inhabited (φ (List α))] (p : φ α) : φ (List α) :=
---     liftSeq2 List.cons p $ fun () => many p
+--     Seq.liftSeq2 List.cons p $ fun () => many p
 --   partial def many [Alternative φ] [Inhabited (φ (List α))] (p : φ α) : φ (List α) :=
 --     some p <|> pure []
 -- end
 -- partial def many1 [Alternative φ] [Inhabited (φ (List α))] : φ α → φ (List α) := some
 
 -- partial def sepBy1 [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep : φ β) : φ (List α) :=
---   liftSeq2 List.cons p fun () => (many $ sep *> p)
+--   Seq.liftSeq2 List.cons p fun () => (many $ sep *> p)
 -- partial def sepBy [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep : φ β) : φ (List α) :=
 --   sepBy1 p sep <|> pure []
 
 -- mutual
 --   partial def sepEndBy1 [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep : φ β) : φ (List α) :=
---     liftSeq2 List.cons p fun () => ((sep *> sepEndBy p sep) <|> pure [])
+--     Seq.liftSeq2 List.cons p fun () => ((sep *> sepEndBy p sep) <|> pure [])
 --   partial def sepEndBy [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep : φ β) : φ (List α) :=
 --     sepEndBy1 p sep <|> pure []
 -- end
@@ -94,7 +83,7 @@ partial def many1 (m : Type u → Type v) (σ α β E : Type u) {γ : Type u} (p
 
 -- mutual
 --   partial def sepEndBy1 [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep : φ β) : φ (List α) :=
---     liftSeq2 List.cons p fun () => ((sep *> sepEndBy p sep) <|> pure [])
+--     Seq.liftSeq2 List.cons p fun () => ((sep *> sepEndBy p sep) <|> pure [])
 --   partial def sepEndBy [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep : φ β) : φ (List α) :=
 --     sepEndBy1 p sep <|> pure []
 -- end
