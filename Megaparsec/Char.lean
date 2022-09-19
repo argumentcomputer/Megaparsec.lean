@@ -34,6 +34,7 @@ structure CharSimple where
       (newline *> pure "\n") <|> crlf
   eof : m Unit :=
     MonadParsec.eof ℘ α E Char
+  satisfy (f : Char → Bool) := satisfy m ℘ α E f
   noneOf (xs : List Char) := noneOf m ℘ α E xs
   oneOf (xs : List Char) := oneOf m ℘ α E xs
   tab : m Char := char '\t'
