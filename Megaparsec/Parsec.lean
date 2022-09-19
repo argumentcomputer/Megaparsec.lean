@@ -207,6 +207,18 @@ def parseTP (p : ParsecT m β σ E γ) (srcName : String) (xs : σ) [Monad m] :=
   runParserT' p (initialState srcName xs) >>=
     fun y => pure y.2
 
+def parseT (p : ParsecT m β σ E γ) (xs : σ) [Monad m] :=
+  parseTP p "" xs
+
+def parse (p : Parsec β σ E γ) (xs : σ) :=
+  parseP p "" xs
+
+def parsesT? (p : ParsecT m β σ E γ) (xs : σ) [Monad m] :=
+  parseT p xs >>= (pure ∘ Either.isRight)
+
+def parses? (p : Parsec β σ E γ) (xs : σ) :=
+  Either.isRight $ parse p xs
+
 /- Test some parser polymorphically. -/
 def parseTestP (p : Parsec β σ E γ) [ToString γ] [ToString β] [ToString E]
   (xs : σ) [Streamable σ] : IO (Bool × Either Unit γ) :=
