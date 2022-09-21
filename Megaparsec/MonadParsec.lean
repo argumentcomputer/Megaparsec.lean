@@ -305,3 +305,72 @@ def withRange (α : Type u) (p : ParsecT m β σ E (Range → γ)) [MonadParsec 
   let s₁ : State β σ E ← MonadParsec.getParserState α
   let last := s₁.posState.sourcePos
   pure $ go (Range.mk first last)
+
+end MonadParsec
+
+namespace Megaparsec
+
+open MonadParsec
+
+def parseError {m: Type u → Type v} {℘ α E β: Type u} (_: MonadParsec m ℘ α E β) {γ : Type u}
+  : Megaparsec.Errors.ParseError.ParseError β E → m γ :=
+  MonadParsec.MonadParsec.parseError ℘ α
+
+def label {m: Type u → Type v} {℘ α E β: Type u} (_:MonadParsec.MonadParsec m ℘ α E β) {γ : Type u}
+  : String → m γ → m γ :=
+  MonadParsec.MonadParsec.label ℘ α E β
+
+def hidden {m: Type u → Type v} {℘ α E β: Type u} (_:MonadParsec.MonadParsec m ℘ α E β) {γ : Type u}
+  : m γ → m γ :=
+  MonadParsec.MonadParsec.hidden ℘ α E β
+
+def attempt {m: Type u → Type v} {℘ α E β: Type u} (_:MonadParsec.MonadParsec m ℘ α E β) {γ : Type u}
+  : m γ → m γ :=
+  MonadParsec.MonadParsec.attempt ℘ α E β
+
+def lookAhead {m: Type u → Type v} {℘ α E β: Type u} (_:MonadParsec.MonadParsec m ℘ α E β) {γ : Type u}
+  : m γ → m γ :=
+  MonadParsec.MonadParsec.lookAhead ℘ α E β
+
+def notFollowedBy {m: Type u → Type v} {℘ α E β: Type u} (_:MonadParsec.MonadParsec m ℘ α E β) {γ : Type u}
+  : m γ → m PUnit :=
+  MonadParsec.MonadParsec.notFollowedBy ℘ α E β
+
+def withRecovery {m: Type u → Type v} {℘ α E β: Type u} (_:MonadParsec.MonadParsec m ℘ α E β) {γ : Type u}
+  : (Megaparsec.Errors.ParseError.ParseError β E → m γ) → m γ → m γ :=
+  MonadParsec.MonadParsec.withRecovery ℘ α
+
+def observing {m: Type u → Type v} {℘ α E β: Type u} (_:MonadParsec.MonadParsec m ℘ α E β) {γ : Type u}
+  : m γ → m (Either (Megaparsec.Errors.ParseError.ParseError β E) γ) :=
+  MonadParsec.MonadParsec.observing ℘ α
+
+def eof {m: Type u → Type v} {℘ α E β: Type u} (_:MonadParsec.MonadParsec m ℘ α E β) : m PUnit :=
+  MonadParsec.MonadParsec.eof ℘ α E β
+
+def token {m: Type u → Type v} {℘ α E β: Type u} (_:MonadParsec.MonadParsec m ℘ α E β) 
+  : (β → Option γ) → (List (Megaparsec.Errors.ErrorItem β)) → m γ :=
+  MonadParsec.MonadParsec.token ℘ α E
+
+def tokens {m: Type u → Type v} {℘ α E β: Type u} (_:MonadParsec.MonadParsec m ℘ α E β) 
+  : (β → Option γ) → (List (Megaparsec.Errors.ErrorItem β)) → m γ :=
+  MonadParsec.MonadParsec.token ℘ α E
+
+def takeWhileP {m: Type u → Type v} {℘ α E β: Type u} (_:MonadParsec.MonadParsec m ℘ α E β) 
+  : Option String → (β → Bool) → m α :=
+  MonadParsec.MonadParsec.takeWhileP ℘ E
+
+def takeWhile1P {m: Type u → Type v} {℘ α E β: Type u} (_:MonadParsec.MonadParsec m ℘ α E β) 
+  : Option String → (β → Bool) → m α :=
+  MonadParsec.MonadParsec.takeWhile1P ℘ E
+
+def takeP {m: Type u → Type v} {℘ α E β: Type u} (_: MonadParsec.MonadParsec m ℘ α E β) : Option String -> Nat -> m α :=
+  MonadParsec.MonadParsec.takeP ℘ E β
+
+def getParserState {m: Type u → Type v} {℘ α E β: Type u} (_: MonadParsec.MonadParsec m ℘ α E β) 
+  : m (Megaparsec.ParserState.State β ℘ E) :=
+  MonadParsec.MonadParsec.getParserState α
+
+def updateParserState {m: Type u → Type v} {℘ α E β: Type u} (_: MonadParsec.MonadParsec m ℘ α E β) 
+  : (Megaparsec.ParserState.State β ℘ E → Megaparsec.ParserState.State β ℘ E)-> m PUnit :=
+  MonadParsec.MonadParsec.updateParserState α
+end Megaparsec
