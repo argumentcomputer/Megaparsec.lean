@@ -1,5 +1,6 @@
 import YatimaStdLib
 import Straume.Iterator
+import Straume.Bit
 
 open Straume.Iterator
 
@@ -93,3 +94,15 @@ instance : Printable String where
     match String.join $ go nl with
     | "" => "empty string"
     | joined => s!"\"{joined}\""
+
+instance : Printable UInt8 where
+  showTokens := stringPretty ∘ Functor.map (fun i => Char.ofNat $ i.toNat)
+
+open Bit in
+instance : Printable Bit where
+  showTokens
+    | ⟦b⟧ => s!"'{b}'"
+    | nl => let rec go xs := match xs with
+      | ⟦b⟧ => [toString b]
+      | b :| bs => toString b :: go bs
+      s!"\"{String.join $ go nl}\""
