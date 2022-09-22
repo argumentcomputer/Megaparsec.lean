@@ -353,7 +353,7 @@ def token {m: Type u → Type v} {℘ α E β: Type u} (_:MonadParsec.MonadParse
 
 def tokens {m: Type u → Type v} {℘ α E β: Type u} (_:MonadParsec.MonadParsec m ℘ α E β) 
   : (β → Option γ) → (List (Megaparsec.Errors.ErrorItem β)) → m γ :=
-  MonadParsec.MonadParsec.token ℘ α E
+  MonadParsec.MonadParsec.tokens ℘ α E
 
 def takeWhileP {m: Type u → Type v} {℘ α E β: Type u} (_:MonadParsec.MonadParsec m ℘ α E β) 
   : Option String → (β → Bool) → m α :=
@@ -373,4 +373,5 @@ def getParserState {m: Type u → Type v} {℘ α E β: Type u} (_: MonadParsec.
 def updateParserState {m: Type u → Type v} {℘ α E β: Type u} (_: MonadParsec.MonadParsec m ℘ α E β) 
   : (Megaparsec.ParserState.State β ℘ E → Megaparsec.ParserState.State β ℘ E)-> m PUnit :=
   MonadParsec.MonadParsec.updateParserState α
+
 end Megaparsec
