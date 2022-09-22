@@ -288,15 +288,30 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
   updateParserState φ := fun _ s _ _ eok _ =>
     eok.2 PUnit.unit (φ s) []
 
--- instance simpleInstance {α β σ E : Type u}
---                         [ii : Iterable α β] [ib : Iterable.Bijection β α] [iia : Inhabited α] [is : @Straume Id σ Chunk α β]
---                         : MonadParsec (Parsec β σ E) σ α E β := @theInstance Id α β σ E Id.instMonadId ii ib iia is
-
--- def withRange {α β σ E γ : Type u} (p : ParsecT m β σ E (Range → γ)) : ParsecT m β σ E γ := do
---   let first : SourcePos ← (p.getParserState).sourcePos
---   let mkParser ← p
---   let last ← (MonadParsec.getParserState p).sourcePos
---   pure $ mkParser $ Range.mk first last
+instance [Monoid w] [Monad m]
+         [mₚ : MonadParsec m ℘ α E β]
+         [mₗ : MonadLiftT m (RWST r w σ m)]
+         : MonadParsec (RWST r w σ m) ℘ α E β where
+  parseError err := mₗ.monadLift $ mₚ.parseError ℘ α err
+  label l p := fun r s => mₚ.label ℘ α E β l (p r s)
+  attempt st := fun r s => mₚ.attempt ℘ α E β (st r s)
+  lookAhead st := fun r s => do
+    let (x, _, _) ← mₚ.lookAhead ℘ α E β (st r s)
+    pure (x, s, One.one)
+  notFollowedBy st := fun r s => do
+    mₚ.notFollowedBy ℘ α E β $ RWST.void $ st r s
+    pure (Unit.unit, s, One.one)
+  withRecovery φ p := fun r s =>
+    mₚ.withRecovery ℘ α (fun e => (φ e) r s) (p r s)
+  observing p := fun r s => Either.fixs' s <$> mₚ.observing ℘ α (p r s)
+  eof := mₗ.monadLift $ mₚ.eof ℘ α E β
+  token ρ errorCtx := mₗ.monadLift $ mₚ.token ℘ α E ρ errorCtx
+  tokens f l := mₗ.monadLift $ mₚ.tokens ℘ E β f l
+  takeWhileP ol ρ := mₗ.monadLift $ mₚ.takeWhileP ℘ E ol ρ
+  takeWhile1P ol ρ := mₗ.monadLift $ mₚ.takeWhile1P ℘ E ol ρ
+  takeP ol n := mₗ.monadLift $ mₚ.takeP ℘ E β ol n
+  getParserState := mₗ.monadLift $ mₚ.getParserState α
+  updateParserState φ := mₗ.monadLift $ mₚ.updateParserState α φ
 
 def withRange (α : Type u) (p : ParsecT m β σ E (Range → γ)) [MonadParsec (ParsecT m β σ E) σ α E β] : ParsecT m β σ E γ := do
   let s₀ : State β σ E ← MonadParsec.getParserState α
