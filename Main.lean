@@ -68,7 +68,7 @@ def main : IO Unit := do
   let P := Parsec Char String Unit
   let source := "yatimaaaa!"
   let bad := "yatimAaaa!"
-  let yp := string P String Unit Char "yatima"
+  let yp : P String := string "yatima"
   let x : (Bool × Either Unit String) <- parseTestP yp source
   if x.1 then
     IO.println "Well parsed."
@@ -79,7 +79,7 @@ def main : IO Unit := do
   IO.println "Let's see what isn't parsed after we parsed out `yatima`!"
   IO.println y.1.input
 
-  let ypp := (string P String Unit Char "yat") *> (string P String Unit Char "ima")
+  let ypp := (string "yat") *> (string "ima")
   let yb := rp bad ypp
   IO.println "Let's see how the parser fails."
   match yb.2 with
@@ -94,16 +94,17 @@ def main : IO Unit := do
   let S := (String × IO.FS.Handle)
   let Q := ParsecT IO Char S Unit
   -- let abcdp := (string Q S "abcd" <* MonadParsec.eof S String)
-  let abcdpnl := do
-    let res1 ← (string Q S Unit Char "ab")
-    let res2 ← (string Q S Unit Char "cd")
-    let _nl ← (string Q S Unit Char "\n")
-    let _eos ← (MonadParsec.eof S String Unit Char)
+  let abcdpnl : Q String := do
+    let res1 ← (string "ab")
+    let res2 ← (string "cd")
+    let _nl ← (string "\n")
+    let _eos ← Megaparsec.eof
     pure $ res1 ++ res2
   IO.println "Let's see if @ixahedron's test passes."
   let _ix : (Bool × Either Unit String) ← parseTestTP abcdpnl bh
   let h1 ← IO.FS.Handle.mk (System.mkFilePath ["./Tests", "abcd-no-nl.txt"]) IO.FS.Mode.read false
-  let _ixx : (Bool × Either Unit String) ← parseTestTP (string Q S Unit Char "abcd" <* MonadParsec.eof S String Unit Char) ("", h1)
+  let abcd : Q String := (string "abcd" <* MonadParsec.eof S String Unit Char)
+  let _ixx : (Bool × Either Unit String) ← parseTestTP abcd ("", h1)
 
   IO.println "Ergonomic version of @ixahedron's test."
   let file := System.mkFilePath ["./Tests", "abcd.txt"]
