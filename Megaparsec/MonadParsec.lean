@@ -314,6 +314,30 @@ instance [Monoid w] [Monad m]
   getParserState := mₗ.monadLift $ mₚ.getParserState α
   updateParserState φ := mₗ.monadLift $ mₚ.updateParserState α φ
 
+instance [Monad m] [Alternative m]
+         [mₚ : MonadParsec m ℘ α E β]
+         : MonadParsec (StateT σ m) ℘ α E β where
+  parseError err := liftM $ mₚ.parseError ℘ α err
+  label l p := (mₚ.label ℘ α E β l) ∘ p
+  attempt st := (mₚ.attempt ℘ α E β) ∘ st
+  lookAhead st := (mₚ.lookAhead ℘ α E β) ∘ st
+  notFollowedBy st x :=
+    Monad.seqComp (mₚ.notFollowedBy ℘ α E β (Prod.fst <$> st x)) $ pure (Unit.unit, x)
+  withRecovery cont st x :=
+    mₚ.withRecovery ℘ α (fun e => (cont e) x) $ st x
+  observing p x :=
+    Either.fixs x <$> (mₚ.observing ℘ α $ p x)
+  eof := liftM $ mₚ.eof ℘ α E β
+  token p errorCtx :=
+    liftM $ mₚ.token ℘ α E p errorCtx
+  tokens f l :=
+    liftM $ mₚ.tokens ℘ E β f l
+  takeWhileP ol ρ := liftM $ mₚ.takeWhileP ℘ E ol ρ
+  takeWhile1P ol ρ := liftM $ mₚ.takeWhile1P ℘ E ol ρ
+  takeP ol n := liftM $ mₚ.takeP ℘ E β ol n
+  getParserState := liftM $ mₚ.getParserState α
+  updateParserState φ := liftM $ mₚ.updateParserState α φ
+
 def withRange (α : Type u) (p : ParsecT m β σ E (Range → γ)) [MonadParsec (ParsecT m β σ E) σ α E β] : ParsecT m β σ E γ := do
   let s₀ : State β σ E ← MonadParsec.getParserState α
   let first := s₀.posState.sourcePos
@@ -371,11 +395,11 @@ def tokens {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec
   : (α → α → Bool) → α → m α :=
   MonadParsec.MonadParsec.tokens ℘ E β
 
-def takeWhileP {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β] 
+def takeWhileP {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β]
   : Option String → (β → Bool) → m α :=
   MonadParsec.MonadParsec.takeWhileP ℘ E
 
-def takeWhile1P {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β] 
+def takeWhile1P {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β]
   : Option String → (β → Bool) → m α :=
   MonadParsec.MonadParsec.takeWhile1P ℘ E
 
