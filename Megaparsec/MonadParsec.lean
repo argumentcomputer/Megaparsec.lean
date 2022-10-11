@@ -110,6 +110,7 @@ private def nelstr (x : Char) (xs : String) := match NEList.nonEmptyString xs wi
   | .some xs' => NEList.cons x xs'
   | .none => NEList.uno x
 
+@[defaultInstance]
 instance theInstance {m : Type u → Type v} {α β σ E : Type u}
                      [Monad m] [Iterable α β] [Iterable.Bijection β α] [Inhabited α] [@Straume m σ Chunk α β]
                      : MonadParsec (ParsecT m β σ E) σ α E β where
@@ -288,15 +289,54 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
   updateParserState φ := fun _ s _ _ eok _ =>
     eok.2 PUnit.unit (φ s) []
 
--- instance simpleInstance {α β σ E : Type u}
---                         [ii : Iterable α β] [ib : Iterable.Bijection β α] [iia : Inhabited α] [is : @Straume Id σ Chunk α β]
---                         : MonadParsec (Parsec β σ E) σ α E β := @theInstance Id α β σ E Id.instMonadId ii ib iia is
+instance [Monoid w] [Monad m]
+         [mₚ : MonadParsec m ℘ α E β]
+         [mₗ : MonadLiftT m (RWST r w σ m)]
+         : MonadParsec (RWST r w σ m) ℘ α E β where
+  parseError err := mₗ.monadLift $ mₚ.parseError ℘ α err
+  label l p := fun r s => mₚ.label ℘ α E β l (p r s)
+  attempt st := fun r s => mₚ.attempt ℘ α E β (st r s)
+  lookAhead st := fun r s => do
+    let (x, _, _) ← mₚ.lookAhead ℘ α E β (st r s)
+    pure (x, s, One.one)
+  notFollowedBy st := fun r s => do
+    mₚ.notFollowedBy ℘ α E β $ RWST.void $ st r s
+    pure (Unit.unit, s, One.one)
+  withRecovery φ p := fun r s =>
+    mₚ.withRecovery ℘ α (fun e => (φ e) r s) (p r s)
+  observing p := fun r s => Either.fixs' s <$> mₚ.observing ℘ α (p r s)
+  eof := mₗ.monadLift $ mₚ.eof ℘ α E β
+  token ρ errorCtx := mₗ.monadLift $ mₚ.token ℘ α E ρ errorCtx
+  tokens f l := mₗ.monadLift $ mₚ.tokens ℘ E β f l
+  takeWhileP ol ρ := mₗ.monadLift $ mₚ.takeWhileP ℘ E ol ρ
+  takeWhile1P ol ρ := mₗ.monadLift $ mₚ.takeWhile1P ℘ E ol ρ
+  takeP ol n := mₗ.monadLift $ mₚ.takeP ℘ E β ol n
+  getParserState := mₗ.monadLift $ mₚ.getParserState α
+  updateParserState φ := mₗ.monadLift $ mₚ.updateParserState α φ
 
--- def withRange {α β σ E γ : Type u} (p : ParsecT m β σ E (Range → γ)) : ParsecT m β σ E γ := do
---   let first : SourcePos ← (p.getParserState).sourcePos
---   let mkParser ← p
---   let last ← (MonadParsec.getParserState p).sourcePos
---   pure $ mkParser $ Range.mk first last
+instance [Monad m] [Alternative m]
+         [mₚ : MonadParsec m ℘ α E β]
+         : MonadParsec (StateT σ m) ℘ α E β where
+  parseError err := liftM $ mₚ.parseError ℘ α err
+  label l p := (mₚ.label ℘ α E β l) ∘ p
+  attempt st := (mₚ.attempt ℘ α E β) ∘ st
+  lookAhead st := (mₚ.lookAhead ℘ α E β) ∘ st
+  notFollowedBy st x :=
+    Monad.seqComp (mₚ.notFollowedBy ℘ α E β (Prod.fst <$> st x)) $ pure (Unit.unit, x)
+  withRecovery cont st x :=
+    mₚ.withRecovery ℘ α (fun e => (cont e) x) $ st x
+  observing p x :=
+    Either.fixs x <$> (mₚ.observing ℘ α $ p x)
+  eof := liftM $ mₚ.eof ℘ α E β
+  token p errorCtx :=
+    liftM $ mₚ.token ℘ α E p errorCtx
+  tokens f l :=
+    liftM $ mₚ.tokens ℘ E β f l
+  takeWhileP ol ρ := liftM $ mₚ.takeWhileP ℘ E ol ρ
+  takeWhile1P ol ρ := liftM $ mₚ.takeWhile1P ℘ E ol ρ
+  takeP ol n := liftM $ mₚ.takeP ℘ E β ol n
+  getParserState := liftM $ mₚ.getParserState α
+  updateParserState φ := liftM $ mₚ.updateParserState α φ
 
 def withRange (α : Type u) (p : ParsecT m β σ E (Range → γ)) [MonadParsec (ParsecT m β σ E) σ α E β] : ParsecT m β σ E γ := do
   let s₀ : State β σ E ← MonadParsec.getParserState α
@@ -305,3 +345,73 @@ def withRange (α : Type u) (p : ParsecT m β σ E (Range → γ)) [MonadParsec 
   let s₁ : State β σ E ← MonadParsec.getParserState α
   let last := s₁.posState.sourcePos
   pure $ go (Range.mk first last)
+
+end MonadParsec
+
+namespace Megaparsec
+
+open MonadParsec
+
+def parseError {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec m ℘ α E β] {γ : Type u}
+  : Megaparsec.Errors.ParseError.ParseError β E → m γ :=
+  MonadParsec.MonadParsec.parseError ℘ α
+
+def label {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β] {γ : Type u}
+  : String → m γ → m γ :=
+  MonadParsec.MonadParsec.label ℘ α E β
+
+def hidden {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β] {γ : Type u}
+  : m γ → m γ :=
+  MonadParsec.MonadParsec.hidden ℘ α E β
+
+def attempt {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β] {γ : Type u}
+  : m γ → m γ :=
+  MonadParsec.MonadParsec.attempt ℘ α E β
+
+def lookAhead {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β] {γ : Type u}
+  : m γ → m γ :=
+  MonadParsec.MonadParsec.lookAhead ℘ α E β
+
+def notFollowedBy {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β] {γ : Type u}
+  : m γ → m PUnit :=
+  MonadParsec.MonadParsec.notFollowedBy ℘ α E β
+
+def withRecovery {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β] {γ : Type u}
+  : (Megaparsec.Errors.ParseError.ParseError β E → m γ) → m γ → m γ :=
+  MonadParsec.MonadParsec.withRecovery ℘ α
+
+def observing {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β] {γ : Type u}
+  : m γ → m (Either (Megaparsec.Errors.ParseError.ParseError β E) γ) :=
+  MonadParsec.MonadParsec.observing ℘ α
+
+def eof {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β] : m PUnit :=
+  MonadParsec.MonadParsec.eof ℘ α E β
+
+def token {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β]
+  : (β → Option γ) → (List (Megaparsec.Errors.ErrorItem β)) → m γ :=
+  MonadParsec.MonadParsec.token ℘ α E
+
+def tokens {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β]
+  : (α → α → Bool) → α → m α :=
+  MonadParsec.MonadParsec.tokens ℘ E β
+
+def takeWhileP {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β]
+  : Option String → (β → Bool) → m α :=
+  MonadParsec.MonadParsec.takeWhileP ℘ E
+
+def takeWhile1P {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β]
+  : Option String → (β → Bool) → m α :=
+  MonadParsec.MonadParsec.takeWhile1P ℘ E
+
+def takeP {m: Type u → Type v} {℘ α E β: Type u} [ MonadParsec.MonadParsec m ℘ α E β] : Option String -> Nat -> m α :=
+  MonadParsec.MonadParsec.takeP ℘ E β
+
+def getParserState {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β]
+  : m (Megaparsec.ParserState.State β ℘ E) :=
+  MonadParsec.MonadParsec.getParserState α
+
+def updateParserState {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β]
+  : (Megaparsec.ParserState.State β ℘ E → Megaparsec.ParserState.State β ℘ E)-> m PUnit :=
+  MonadParsec.MonadParsec.updateParserState α
+
+end Megaparsec

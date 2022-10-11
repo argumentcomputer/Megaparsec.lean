@@ -22,9 +22,9 @@ variable (m : Type → Type v) (℘ E : Type) (α : Type := String)
 
 structure CharSimple where
   s : StringSimple m ℘ E := {}
-  char (x : Char) : m Char := single m ℘ E α x
-  char' (x : Char) : m Char := choice ℘ α E Char [ char x.toLower, char x.toUpper ]
-  anySingle : m Char := anySingle m ℘ α E
+  char (x : Char) : m Char := @single m ℘ α E Char inferInstance inferInstance x
+  char' (x : Char) : m Char := @choice m ℘ α E Char Char inferInstance inferInstance [ char x.toLower, char x.toUpper ]
+  anySingle : m Char := @anySingle m ℘ α E Char inferInstance
   newline := char '\n'
   cr := char '\r'
   crlf : m String := s.stringP "\r\n"
@@ -34,8 +34,9 @@ structure CharSimple where
       (newline *> pure "\n") <|> crlf
   eof : m Unit :=
     MonadParsec.eof ℘ α E Char
-  noneOf (xs : List Char) := noneOf m ℘ α E xs
-  oneOf (xs : List Char) := oneOf m ℘ α E xs
+  satisfy (f : Char → Bool) := @satisfy m ℘ α E Char inferInstance f
+  noneOf (xs : List Char) := @noneOf m ℘ α E Char inferInstance inferInstance xs
+  oneOf (xs : List Char) := @oneOf m ℘ α E Char inferInstance inferInstance xs
   tab : m Char := char '\t'
 
 def char_simple (℘x : Type) [MonadParsec (Parsec Char ℘x Unit) ℘x String Unit Char] : CharSimple (Parsec Char ℘x Unit) ℘x Unit := {}
