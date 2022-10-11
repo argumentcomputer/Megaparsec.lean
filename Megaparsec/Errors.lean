@@ -1,7 +1,9 @@
 import YatimaStdLib
 import Megaparsec.Pos
+import Megaparsec.Printable
 
 open Megaparsec.Pos
+open Megaparsec.Printable
 
 namespace Megaparsec.Errors
 
@@ -16,71 +18,25 @@ inductive ErrorItem (β : Type u) where
   | label (l : NEList Char)
   | eof
 
-def errorItemLength : ErrorItem β → Nat
-  | .tokens t => t.toList.length
+def errorItemLength [Printable β] : ErrorItem β → Nat
+  | .tokens t => tokensLength t
   | _ => 1
 
--- We have `stringPretty` for String and Char parsing –
--- TODO: define another formatting type class?
+instance [Printable β] : ToString (ErrorItem β) where
+  toString
+  | .eof => "end of input"
+  | .label t => String.mk t.toList
+  | .tokens t => showTokens t
+
 instance [ToString β] : ToString (ErrorItem β) where
   toString
   | .eof => "end of input"
   | .label t => String.mk t.toList
   | .tokens t => match t with
-    | .uno x => s!"{x}"
-    | .cons x xs => "\"" ++
+    | ⟦x⟧ => s!"{x}"
+    | x :| xs => "\"" ++
       NEList.foldl (fun acc token => s!"{acc}{token}") (toString x) xs ++ "\""
 
--- TODO: why are almost all escape sequences unrecognised by Lean?
-private def charPretty' : Char → Option String
-  -- | '\NUL' => .some "null"
-  -- | '\SOH' => .some "start of heading"
-  -- | '\STX' => .some "start of text"
-  -- | '\ETX' => .some "end of text"
-  -- | '\EOT' => .some "end of transmission"
-  -- | '\ENQ' => .some "enquiry"
-  -- | '\ACK' => .some "acknowledge"
-  -- | '\BEL' => .some "bell"
-  -- | '\BS' => .some "backspace"
-  | '\t' => .some "tab"
-  | '\n' => .some "newline"
-  -- | '\v' => .some "vertical tab"
-  -- | '\f' => .some "form feed"
-  | '\r' => .some "carriage return"
-  -- | '\SO' => .some "shift out"
-  -- | '\SI' => .some "shift in"
-  -- | '\DLE' => .some "data link escape"
-  -- | '\DC1' => .some "device control one"
-  -- | '\DC2' => .some "device control two"
-  -- | '\DC3' => .some "device control three"
-  -- | '\DC4' => .some "device control four"
-  -- | '\NAK' => .some "negative acknowledge"
-  -- | '\SYN' => .some "synchronous idle"
-  -- | '\ETB' => .some "end of transmission block"
-  -- | '\CAN' => .some "cancel"
-  -- | '\EM' => .some "end of medium"
-  -- | '\SUB' => .some "substitute"
-  -- | '\ESC' => .some "escape"
-  -- | '\FS' => .some "file separator"
-  -- | '\GS' => .some "group separator"
-  -- | '\RS' => .some "record separator"
-  -- | '\US' => .some "unit separator"
-  -- | '\DEL' => .some "delete"
-  -- | '\160' => .some "non-breaking space"
-  | _ => .none
-
-private def charPretty : Char → String
-  | ' ' => "space"
-  | ch  => (charPretty' ch).getD $ s!"'{ch}'"
-
-private def stringPretty : NEList Char → String
-  | .uno x => charPretty x
-  | .cons '\r' (.uno '\n') => "crlf newline"
-  | xs =>
-    let f c := match charPretty' c with
-      | .none => s!"{c}"
-      | .some pretty => s!"<{pretty}>"
-    s!"\"{String.join $ f <$> xs.toList}\""
 
 --                    TODO: make this a set
 --                             |

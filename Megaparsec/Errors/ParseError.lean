@@ -1,6 +1,8 @@
 import Megaparsec.Errors
+import Megaparsec.Printable
 
 open Megaparsec.Errors
+open Megaparsec.Printable
 
 namespace Megaparsec.Errors.ParseError
 
@@ -20,20 +22,20 @@ def errorOffset : ParseError β E → Nat
 
 section
 
-variable {β : Type u} [ToString β]
+variable {β : Type u} [Printable β]
 variable {E : Type u} [ToString E]
 
 def NEList.spanToLast (ne : NEList α) : (List α × α) :=
   let rec go
-    | .uno x, acc => (acc, x)
-    | .cons x xs, acc => go xs (x :: acc)
+    | ⟦x⟧, acc => (acc, x)
+    | x :| xs, acc => go xs (x :: acc)
   go ne []
 
 -- Print a pretty list where items are separated with commas and the word
 -- “or” according to the rules of English punctuation.
 def orList : NEList String → String
-  | .uno x => x
-  | .cons x (.uno y) => s!"{x} or {y}"
+  | ⟦x⟧ => x
+  | ⟦x,y⟧ => s!"{x} or {y}"
   | xs => let (lxs, last) := NEList.spanToLast xs
     String.intercalate ", " lxs ++ ", or " ++ last
 
@@ -43,7 +45,6 @@ def messageItemsPretty (pref : String) (ts : List String) : String :=
   | .none => ""
   | .some ts => s!"{pref} {orList ts}\n"
 
--- TODO: orig MP has `messageItemsPretty`, might want to add it. But it uses Set :(
 /-
   Pretty-print a textual part of a `ParseError`, that is, everything
   except for its position. The rendered `String` always ends with a

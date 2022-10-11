@@ -5,6 +5,8 @@ import Megaparsec.Char
 import Megaparsec.String
 import Megaparsec.ParserState
 
+import YatimaStdLib
+
 open MonadParsec
 open Megaparsec.Parsec
 open Megaparsec.Common
@@ -76,7 +78,7 @@ structure LispLinearParsers where
   stringP :=
     s.label "string" $ do
     let (str : String) ←
-      between (c.char '"') (c.char '"') $
+      Seq.between (c.char '"') (c.char '"') $
         String.mk <$> (manyP m ℘ $ quoteAnyChar <|> c.noneOf "\\\"".data)
     pure $ fun r => Lisp.string (str, r)
   commentP := s.label "comment" $
@@ -94,7 +96,7 @@ mutual
   partial def listP : ParsecT m Char ℘ Unit (Range → Lisp) :=
     let p : LispLinearParsers m ℘ := {}
     p.s.label "list" $ do
-    between (p.c.char '(') (p.c.char ')') $ do
+    Seq.between (p.c.char '(') (p.c.char ')') $ do
       let ys ← sepEndByP m ℘ lispParser p.ignore
       pure $ fun r => Lisp.list (ys, r)
 

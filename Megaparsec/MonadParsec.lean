@@ -300,7 +300,7 @@ instance [Monoid w] [Monad m]
     let (x, _, _) ← mₚ.lookAhead ℘ α E β (st r s)
     pure (x, s, One.one)
   notFollowedBy st := fun r s => do
-    mₚ.notFollowedBy ℘ α E β $ RWST.void $ st r s
+    mₚ.notFollowedBy ℘ α E β $ void $ st r s
     pure (Unit.unit, s, One.one)
   withRecovery φ p := fun r s =>
     mₚ.withRecovery ℘ α (fun e => (φ e) r s) (p r s)
