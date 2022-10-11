@@ -1,2 +1,5 @@
 /build
 /lean_packages
+
+# Ignore nix stuff, just in case?
+/result
