@@ -157,4 +157,32 @@ def main : IO Unit := do
   -- let _xxxx : (Bool × Either Unit Lisp) ← parseTestP (lispParser String) "(\"a\" )"
   let _xxxx : (Bool × Either Unit Lisp) ← parseTestP (lispParser Id String) "(\"hello\" (\"beautiful\" \"world\")) ; ())(lol n1 bug ))())"
 
+  IO.println "Option works!"
+  let optionAsP : Parsec Char String Unit String := string "hello"
+  let optionBsP : Parsec Char String Unit String := string "hellraiser"
+  -- optionRes is a successful parse holding .none
+  let optionRes ← parseTestP (option optionAsP) "hellraiser"
+  let optionDo :=
+    option optionAsP *>
+    optionBsP
+
+  match optionRes.2 with
+  | .right y => match y with
+    | .none => IO.println "optionRes: OK"
+    | _ => IO.println "optionRes: FAIL"
+  | _ => IO.println "optionRes: FAIL(1)"
+
+  -- optionResFall is a successful parse holding "hellraiser"
+  let optionResFall ← parseTestP optionDo "hellraiser"
+
+  match optionResFall.2 with
+  | .right y => IO.println s!"optionResFall: {y} == hellraiser"
+  | _ => IO.println "optionResFall: FAIL"
+
+  -- optionResFall1 is a successful parse holding "hellraiser"
+  let optionResFall1 ← parseTestP optionDo "hellohellraiser"
+  match optionResFall1.2 with
+  | .right y => IO.println s!"optionResFall1: {y} == hellraiser"
+  | _ => IO.println "optionResFall1: FAIL"
+
   IO.println "FIN"
