@@ -43,21 +43,21 @@ end
 partial def many1' {℘ β x : Type u} (p : Parsec β ℘ PUnit x) : Parsec β ℘ PUnit (List x) := some' p
 
 mutual
-  partial def some {m : Type u → Type v} {σ α β E : Type u} {γ : Type u} 
+  partial def some {m : Type u → Type v} {σ α β E : Type u} {γ : Type u}
                    [pi: MonadParsec m σ α E β] [mi: Monad m] [ai: Alternative m]
                    (p : m γ)
                    : m (List γ) := do
     let y ← p
     let ys ← @many m σ α β E γ pi mi ai p
     pure $ List.cons y ys
-  partial def many {m : Type u → Type v} {σ α β E : Type u} {γ : Type u} 
+  partial def many {m : Type u → Type v} {σ α β E : Type u} {γ : Type u}
                    [pi: MonadParsec m σ α E β] [mi: Monad m] [ai: Alternative m]
                    (p : m γ)
                    : m (List γ) :=
     @some m σ α β E γ pi mi ai p <|> pure []
 end
 
-partial def many1 {m : Type u → Type v} {σ α β E : Type u} {γ : Type u} 
+partial def many1 {m : Type u → Type v} {σ α β E : Type u} {γ : Type u}
                   [pi: MonadParsec m σ α E β] [mi: Monad m] [ai: Alternative m]
                   (p : m γ)
                   : m (List γ) :=
@@ -90,7 +90,7 @@ mutual
   partial def sepEndBy' {℘ β x: Type u} (p : Parsec β ℘ PUnit x) (sep : Parsec β ℘ PUnit s) : Parsec β ℘ PUnit (List x) :=
     sepEndBy1' p sep <|> pure []
 
-  partial def sepEndBy1' {℘ β x: Type u} (p : Parsec β ℘ PUnit x) (sep : Parsec β ℘ PUnit s) : Parsec β ℘ PUnit (List x) := do
+  partial def sepEndBy1' {℘ β x : Type u} (p : Parsec β ℘ PUnit x) (sep : Parsec β ℘ PUnit s) : Parsec β ℘ PUnit (List x) := do
     let y ← p
     let ys ← ((sep *> sepEndBy' p sep) <|> pure [])
     pure $ List.cons y ys
@@ -111,8 +111,8 @@ def choice' {m : Type → Type v} {β σ E γ : Type} (ps : List (ParsecT m β �
   List.foldr (fun a b => a <|> b) Alternative.failure ps
 
 /- m-polymorphic choice -/
-def choice {m : Type → Type v} {σ α E β : Type} {γ : Type} [MonadParsec m σ α E β] [Alternative m] 
-  (ps : List (m γ)) 
+def choice {m : Type → Type v} {σ α E β : Type} {γ : Type} [MonadParsec m σ α E β] [Alternative m]
+  (ps : List (m γ))
   : m γ :=
   List.foldr (fun a b => a <|> b) Alternative.failure ps
 
@@ -130,3 +130,21 @@ def noneOf {m : Type u → Type v} {σ α E β : Type u} [BEq β] [i: MonadParse
 
 def oneOf {m : Type u → Type v} {σ α E β: Type u} [BEq β] [i: MonadParsec m σ α E β] (cs : List β): m β :=
   @satisfy m σ α E β i $ fun c => (cs.indexOf? c).isSome
+
+/- Even if the parser `p` fails, `option'` succeds without consuming input.
+Otherwise, it succeeds with consuming input. -/
+def option' {m : Type u → Type v} {℘ β x : Type u}
+            (p : ParsecT m β ℘ PUnit x) : ParsecT m β ℘ PUnit (Option x) :=
+  (p >>= fun y => pure $ .some y) <|> pure none
+
+/- Even if the parser `p` fails, `option'` succeds without consuming input.
+Otherwise, it succeeds with consuming input. -/
+def option'' {℘ β x : Type u} (p : Parsec β ℘ PUnit x) : Parsec β ℘ PUnit (Option x) :=
+  @option' Id ℘ β x p
+
+/- m-polymorphic option -/
+def option {m : Type → Type v} {σ α E β : Type} {γ : Type}
+           [MonadParsec m σ α E β] [Alternative m] [Monad m]
+           (p : m γ)
+           : m (Option γ) :=
+  (p >>= fun y => pure $ .some y) <|> pure none
