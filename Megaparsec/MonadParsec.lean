@@ -34,7 +34,7 @@ class MonadParsec (m : Type u → Type v) (℘ α E β : Type u) where
   /- Hides expected token error messages when `m γ` fails. -/
   hidden (p : m γ) : m γ := label "" p
   /- Attempts to parse with `m γ` and backtrack on failure.
-  Used for arbitrary look-ahead.
+  Normally used to alternate between parsers with the same prefixes.
   Consult megaparsec docs for pitfalls:
   https://hackage.haskell.org/package/megaparsec-9.2.1/docs/src/Text.Megaparsec.Class.html#try -/
   attempt : m γ → m γ
@@ -104,16 +104,16 @@ class MonadParsec (m : Type u → Type v) (℘ α E β : Type u) where
 universe u
 universe v
 
-private def hs₀ (β σ E : Type u) (_ : State β σ E) (_ : ParseError β E) : Hints β := []
-private def hs' (β σ E : Type u) (s' : State β σ E) (e : ParseError β E) := toHints (State.offset s') e
+private def hs₀ (β ℘ E : Type u) (_ : State β ℘ E) (_ : ParseError β E) : Hints β := []
+private def hs' (β ℘ E : Type u) (s' : State β ℘ E) (e : ParseError β E) := toHints (State.offset s') e
 private def nelstr (x : Char) (xs : String) := match NEList.nonEmptyString xs with
   | .some xs' => NEList.cons x xs'
   | .none => NEList.uno x
 
 @[defaultInstance]
-instance theInstance {m : Type u → Type v} {α β σ E : Type u}
-                     [Monad m] [Iterable α β] [Iterable.Bijection β α] [Inhabited α] [@Straume m σ Chunk α β]
-                     : MonadParsec (ParsecT m β σ E) σ α E β where
+instance theInstance {m : Type u → Type v} {α β ℘ E : Type u}
+                     [Monad m] [Iterable α β] [Iterable.Bijection β α] [Inhabited α] [@Straume m ℘ Chunk α β]
+                     : MonadParsec (ParsecT m β ℘ E) ℘ α E β where
 
   parseError e := fun _xi s _cok _cerr _eok eerr => eerr.2 e s
 
@@ -141,7 +141,7 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
 
   notFollowedBy p := fun xi s _ _ eok eerr => do
     let o := s.offset
-    let y : (Chunk β × σ) ← Straume.take1 α s.input
+    let y : (Chunk β × ℘) ← Straume.take1 α s.input
     let c2e := ErrorItem.tokens ∘ NEList.uno
     let subject : ErrorItem β := match y.1 with
     -- TODO: Here and in many other places, we have two branches that are the same because Parsec doesn't care about .fin vs .cont
@@ -154,18 +154,18 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
     p xi s (Consumed.mk, ok) (Consumed.mk, err) (Empty.mk, ok) (Empty.mk, err)
 
   withRecovery φ p := fun xi s cok cerr eok _ =>
-    let err (fHs := (hs₀ β σ E)) e sFail :=
+    let err (fHs := (hs₀ β ℘ E)) e sFail :=
       let ok ψ := fun x s' _hs => ψ x s' (fHs s' e)
       let err _ _ := cerr.2 e sFail
       (φ e) xi sFail (cok.1, ok cok.2) (Consumed.mk, err) (eok.1, ok eok.2) (Empty.mk, err)
-    p xi s cok (Consumed.mk, err) eok (Empty.mk, err $ hs' β σ E)
+    p xi s cok (Consumed.mk, err) eok (Empty.mk, err $ hs' β ℘ E)
 
   observing p := fun xi s cok _ eok _ =>
-    let err (fHs := (hs₀ β σ E)) e s' := cok.2 (.left e) s' (fHs s' e)
-    p xi s (cok.1, cok.2 ∘ .right) (Consumed.mk, err) (eok.1, eok.2 ∘ .right) (Empty.mk, err (hs' β σ E))
+    let err (fHs := (hs₀ β ℘ E)) e s' := cok.2 (.left e) s' (fHs s' e)
+    p xi s (cok.1, cok.2 ∘ .right) (Consumed.mk, err) (eok.1, eok.2 ∘ .right) (Empty.mk, err (hs' β ℘ E))
 
   eof := fun _ s _ _ eok eerr => do
-      let y : (Chunk β × σ) ← Straume.take1 α s.input
+      let y : (Chunk β × ℘) ← Straume.take1 α s.input
       let err c := eerr.2 (.trivial s.offset (.some $ ErrorItem.tokens $ NEList.uno c) ([.eof])) s
       match y.1 with
       | .nil => eok.2 PUnit.unit s []
@@ -175,7 +175,7 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
   token ρ errorCtx := fun _ s cok _ _ eerr => do
     -- TODO: Uhh, if y : γ, then we should really not call these variables "y"
     -- In reality, they are cctx ot csctx.
-    let y : (Chunk β × σ) ← Straume.take1 α s.input
+    let y : (Chunk β × ℘) ← Straume.take1 α s.input
     let test c := match ρ c with
     | .none =>
       eerr.2 (.trivial s.offset (.some $ ErrorItem.tokens $ NEList.uno c) errorCtx) s
@@ -187,7 +187,7 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
 
   tokens f l := fun _ s cok _ eok eerr => do
     let n : Nat := Iterable.length l
-    let y : (Chunk α × σ) ← Straume.takeN n s.input
+    let y : (Chunk α × ℘) ← Straume.takeN n s.input
     let unexpect pos' u :=
       let got := pure u
       let want := match NEList.nonEmpty (Iterable.toList l) with
@@ -213,7 +213,7 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
     | .fin (cs, _) => test cs
 
   takeWhileP ol ρ := fun _ s cok _ eok _ => do
-    let y : (Chunk α × σ) ← Straume.takeWhile ρ s.input
+    let y : (Chunk α × ℘) ← Straume.takeWhile ρ s.input
     let hs := match ol >>= NEList.nonEmptyString with
     | .none => []
     | .some l => [ [ ErrorItem.label l ] ]
@@ -239,7 +239,7 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
     let res cs y := do
       let n := Iterable.length cs
       if (n == 0) then
-        let yb : (Chunk β × σ) ← (Straume.take1 α s.input)
+        let yb : (Chunk β × ℘) ← (Straume.take1 α s.input)
         let got c := .some (ErrorItem.tokens $ NEList.uno c)
         match yb.1 with
         | .nil =>
@@ -250,7 +250,7 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
           eerr.2 (.trivial s.offset (got c) want) s
       else
         cok.2 cs {s with offset := s.offset + n, input := y.2} hs
-    let y : (Chunk α × σ) ← Straume.takeWhile ρ s.input
+    let y : (Chunk α × ℘) ← Straume.takeWhile ρ s.input
     match y.1 with
     | .nil =>
       let got := .some ErrorItem.eof
@@ -271,7 +271,7 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
       | .none => []
       | .some ell => [[ell]]
     let want := hs.headD []
-    let y : (Chunk α × σ) ← Straume.takeN n s.input
+    let y : (Chunk α × ℘) ← Straume.takeN n s.input
     let ok cs := cok.2 cs {s with offset := s.offset + n, input := y.2} hs
     match y.1 with
     | .nil => eerr.2 (.trivial s.offset (.some ErrorItem.eof) want) s
@@ -291,8 +291,8 @@ instance theInstance {m : Type u → Type v} {α β σ E : Type u}
 
 instance [Monoid w] [Monad m]
          [mₚ : MonadParsec m ℘ α E β]
-         [mₗ : MonadLiftT m (RWST r w σ m)]
-         : MonadParsec (RWST r w σ m) ℘ α E β where
+         [mₗ : MonadLiftT m (RWST r w ℘ m)]
+         : MonadParsec (RWST r w ℘ m) ℘ α E β where
   parseError err := mₗ.monadLift $ mₚ.parseError ℘ α err
   label l p := fun r s => mₚ.label ℘ α E β l (p r s)
   attempt st := fun r s => mₚ.attempt ℘ α E β (st r s)
@@ -316,7 +316,7 @@ instance [Monoid w] [Monad m]
 
 instance [Monad m] [Alternative m]
          [mₚ : MonadParsec m ℘ α E β]
-         : MonadParsec (StateT σ m) ℘ α E β where
+         : MonadParsec (StateT ℘ m) ℘ α E β where
   parseError err := liftM $ mₚ.parseError ℘ α err
   label l p := (mₚ.label ℘ α E β l) ∘ p
   attempt st := (mₚ.attempt ℘ α E β) ∘ st
@@ -338,11 +338,11 @@ instance [Monad m] [Alternative m]
   getParserState := liftM $ mₚ.getParserState α
   updateParserState φ := liftM $ mₚ.updateParserState α φ
 
-def withRange (α : Type u) (p : ParsecT m β σ E (Range → γ)) [MonadParsec (ParsecT m β σ E) σ α E β] : ParsecT m β σ E γ := do
-  let s₀ : State β σ E ← MonadParsec.getParserState α
+def withRange (α : Type u) (p : ParsecT m β ℘ E (Range → γ)) [MonadParsec (ParsecT m β ℘ E) ℘ α E β] : ParsecT m β ℘ E γ := do
+  let s₀ : State β ℘ E ← MonadParsec.getParserState α
   let first := s₀.posState.sourcePos
   let go ← p
-  let s₁ : State β σ E ← MonadParsec.getParserState α
+  let s₁ : State β ℘ E ← MonadParsec.getParserState α
   let last := s₁.posState.sourcePos
   pure $ go (Range.mk first last)
 

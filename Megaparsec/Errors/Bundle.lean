@@ -11,12 +11,12 @@ open Megaparsec.ParserState
 open Megaparsec.Printable
 open Megaparsec.Streamable
 
-structure ParseErrorBundle (β σ E : Type u) where
+structure ParseErrorBundle (β ℘ E : Type u) where
   errors : NEList (ParseError β E)
-  posState : PosState σ
+  posState : PosState ℘
 
 -- Helper that makes necessary functions for the `ToString` instance.
-private def makePEBfs [Printable β] [ToString E] [Streamable σ] : ((String → String) × PosState σ) → ParseError β E → ((String → String) × PosState σ)
+private def makePEBfs [Printable β] [ToString E] [Streamable ℘] : ((String → String) × PosState ℘) → ParseError β E → ((String → String) × PosState ℘)
   | (o, pst), e =>
     let (msline, pst') := Streamable.reachOffset (errorOffset e) pst
     let epos := pst'.sourcePos
@@ -49,12 +49,12 @@ private def makePEBfs [Printable β] [ToString E] [Streamable σ] : ((String →
   lines by doing a single pass over the input stream. The rendered `String`
   always ends with a newline.
 -/
-instance [Printable β] [ToString E] [Streamable σ] : ToString (ParseErrorBundle β σ E) where
+instance [Printable β] [ToString E] [Streamable ℘] : ToString (ParseErrorBundle β ℘ E) where
   toString b :=
     let (r, _) := NEList.foldl makePEBfs (id, b.posState) b.errors
     String.drop (r "") 1
 
 open Megaparsec.ParserState in
-def toBundle (s : State β σ E) (errs : NEList (ParseError β E))
-             : ParseErrorBundle β σ E :=
+def toBundle (s : State β ℘ E) (errs : NEList (ParseError β E))
+             : ParseErrorBundle β ℘ E :=
   ParseErrorBundle.mk errs s.posState
