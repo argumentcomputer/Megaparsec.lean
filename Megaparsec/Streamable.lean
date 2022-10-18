@@ -14,7 +14,7 @@ open Zeptoparsec
 
 namespace Megaparsec.Streamable
 
-class Streamable (σ : Type u) where
+class Streamable (℘ : Type u) where
 /-
   Given an offset `o` and initial `PosState`, adjust the state in such
   a way that it starts at the offset.
@@ -42,7 +42,7 @@ class Streamable (σ : Type u) where
         spaces, which is determined by the `tabWidth` field of
         `PosState`.
 -/
-  reachOffset (o : Nat) (pst : PosState σ) : (Option String × PosState σ)
+  reachOffset (o : Nat) (pst : PosState ℘) : (Option String × PosState ℘)
 
   -- A version of `reachOffset` that may be faster because it doesn't need
   -- to fetch the line at which the given offset in located.
@@ -50,7 +50,7 @@ class Streamable (σ : Type u) where
   -- It's currently not possible to use `reachOffsetNoLine` as a minimal
   -- definition; unlike Haskell, Lean4 doesn't(?) allow mutually
   -- recursive class defs.
-  reachOffsetNoLine (o : Nat) (pst : PosState σ) : PosState σ
+  reachOffsetNoLine (o : Nat) (pst : PosState ℘) : PosState ℘
     := (reachOffset o pst).2
 
 export Streamable (reachOffset reachOffsetNoLine)
@@ -62,17 +62,17 @@ export Streamable (reachOffset reachOffsetNoLine)
 -- A helper definition to facilitate defining `reachOffset` for various
 -- stream types.
 def reachOffset'
-  (fsplit : Nat → σ → (σ × σ)) -- How to split input stream at given offset
-  (ffold : ∀φ, (φ → β → φ) → φ → σ → φ) [Iterable σ β] [DecidableEq β] -- How to fold over input stream;
+  (fsplit : Nat → ℘ → (℘ × ℘)) -- How to split input stream at given offset
+  (ffold : ∀φ, (φ → β → φ) → φ → ℘ → φ) [Iterable ℘ β] [DecidableEq β] -- How to fold over input stream;
   -- How to convert chunk of input stream into a `String`.
   -- We only need it to handle adding `linePrefix`.
-  (fstr : σ → String)
+  (fstr : ℘ → String)
   (nlt : β) (tabt : β) -- Newline token and tab token
   (o : Nat) -- Offset to reach
-  (pst : PosState σ) -- Initial `PosState` to use
-  [DecidableEq σ] [Inhabited σ] -- for Zeptoparsec
-  : (Option String × PosState σ) -- Line at which `SourcePos` is located, updated `PosState`
-  := let prepend c (str : σ) := fromList $ c :: (toList str)
+  (pst : PosState ℘) -- Initial `PosState` to use
+  [DecidableEq ℘] [Inhabited ℘] -- for Zeptoparsec
+  : (Option String × PosState ℘) -- Line at which `SourcePos` is located, updated `PosState`
+  := let prepend c (str : ℘) := fromList $ c :: (toList str)
   let go | (apos, g), ch => if ch = nlt then
       ({ apos with line := apos.line + pos1, column := pos1 }, id)
     else if ch = tabt then
@@ -83,7 +83,7 @@ def reachOffset'
     else ({ apos with column := apos.column + pos1}, (g ∘ prepend ch))
   let (pre, post) := fsplit (o - pst.offset) pst.input
   let (spos, f) :=
-    ffold (SourcePos × (σ → σ)) go (pst.sourcePos, id) pre
+    ffold (SourcePos × (℘ → ℘)) go (pst.sourcePos, id) pre
   let isSameLine := spos.line = pst.sourcePos.line
   let addPrefix xs := if isSameLine then pst.linePrefix ++ xs else xs
 
@@ -103,15 +103,15 @@ def reachOffset'
   })
 
 def reachOffsetNoLine'
-  (fsplit : Nat → σ → (σ × σ)) -- How to split input stream at given offset
-  (ffold : ∀φ, (φ → β → φ) → φ → σ → φ) [Iterable σ β] [DecidableEq β] -- How to fold over input stream;
+  (fsplit : Nat → ℘ → (℘ × ℘)) -- How to split input stream at given offset
+  (ffold : ∀φ, (φ → β → φ) → φ → ℘ → φ) [Iterable ℘ β] [DecidableEq β] -- How to fold over input stream;
   -- How to convert chunk of input stream into a `String`.
   -- We only need it to handle adding `linePrefix`.
   (nlt : β) (tabt : β) -- Newline token and tab token
   (o : Nat) -- Offset to reach
-  (pst : PosState σ) -- Initial `PosState` to use
-  [DecidableEq σ] [Inhabited σ] -- for Zeptoparsec
-  : PosState σ := -- Updated `PosState`
+  (pst : PosState ℘) -- Initial `PosState` to use
+  [DecidableEq ℘] [Inhabited ℘] -- for Zeptoparsec
+  : PosState ℘ := -- Updated `PosState`
   let go | apos, ch => if ch = nlt
     then { apos with line := apos.line + pos1, column := pos1 }
     else if ch = tabt then
@@ -135,9 +135,8 @@ instance : Streamable String where
   reachOffsetNoLine o pst :=
     reachOffsetNoLine' splitAt @String.foldl '\n' '\t' o pst
 
-instance [Streamable σ] [Coco σ (σ × η)] : Streamable (σ × η) where
+instance [Streamable ℘] [Coco ℘ (℘ × η)] : Streamable (℘ × η) where
   reachOffset o pst :=
-    let inner : σ := Coco.coco pst.input
+    let inner : ℘ := Coco.coco pst.input
     let (ol, npst) := reachOffset o $ { pst with input := inner }
     (ol, { npst with input := Coco.replace pst.input npst.input })
-

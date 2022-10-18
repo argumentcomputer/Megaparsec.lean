@@ -22,6 +22,17 @@ def takeOneDigitP : Parsec Char String Unit (List Nat) :=
   many' (numP <* laLexer)
 ```
 
+`Parsec` has several type arguments: `β ℘ E γ : Type u`.
+
+- `β` is the atomic type. In our example, it's `Char`. That's the type of tokens parsed out of source `℘`.
+- `℘` is the source type. In our example, it's `String`. Tokens can be read out of the source via `Straume` facilities. `Straume` allows for transparently reading from files. If you want to read from a file, this type would be `(String × IO.FS.Handle)`. It would mean that finite chunks of type `String` are emitted from a, perhaps-larger-than-RAM file handled with somethign of type `IO.FS.Handle`. See `Main.lean` for a usage example! It's really simple!
+- `E` is the custom error type. For quick and dirty parsers, it's `Unit`, but if you want to get fancy, you can create custom errors and construct those based on your parser's fails.
+- `γ` is the type of the thing we're parsing out of the source. In this case, we're parsing a `String` (out of a `String`).
+
+You may wonder where did the type `α` go? In `Straume`, we use letter alpha to denote the _composite_ type. Composite types are finite counterparts of streams. Every stream `℘` has a composite buffer, consisting of atomic tokens.
+
+Now let's see how our parser works.
+
 To check for the padding we used `lookAhead` primitive parser because it parses without consuming.
 
 To check for the `|` terminator, we used "alternative parsing" between `c.eof`, which parses only the literal end of stream and `c.eol`.
@@ -119,6 +130,8 @@ As the user of Megaparsec, you'll likely be using `ParsecT` or even just `Parsec
 
 # Usability
 
+TODO: Matej et al. made a significant UX improvement facilitating `@[defaultIntance]`, and some day we'll describe it here with code samples, but since I don't understand it completely, I can't quite write about it.
+
 # Hacking
 
 ## Reference implementation as a submodule
@@ -135,7 +148,3 @@ I tried both nix and GHCup, both seem to be currently broken, so I disabled HLS 
 ## Lean is strict and terms don't have a single type in Lean
 
 You can't port Haskell code to Lean one to one!
-
-```
-
-```

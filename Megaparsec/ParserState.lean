@@ -38,36 +38,36 @@ universe u
 -- variable (E : Type u)
 
 /- Calculates line / column on demand. -/
-structure PosState (σ : Type u) where
-  input : σ
+structure PosState (℘ : Type u) where
+  input : ℘
   offset : Nat
   sourcePos : SourcePos
   tabWidth : Nat
   linePrefix : String
 
 /- Supports parsing by tracking consumed parts of stream and tracking errors. -/
-structure State (β σ E : Type u) where
-  input       : σ
+structure State (β ℘ E : Type u) where
+  input       : ℘
   offset      : Nat
-  posState    : PosState σ
+  posState    : PosState ℘
   parseErrors : List (ParseError β E)
 
 -- TODO: DEPENDENT PARSING IN HIGHER UNIVERSES S S
 /- A result of evaluation of a particular parser. -/
 open Megaparsec.Errors.Result in
-structure Reply (β σ γ E : Type u) where
-  state    : @State β σ E
+structure Reply (β ℘ γ E : Type u) where
+  state    : @State β ℘ E
   consumed : Bool
   result   : Result β γ E
 
-def longestMatch (s₁ : @State β σ E) (s₂ : @State β σ E) : @State β σ E :=
+def longestMatch (s₁ : @State β ℘ E) (s₂ : @State β ℘ E) : @State β ℘ E :=
   match compare s₁.offset s₂.offset with
     | Ordering.lt => s₂
     | Ordering.eq => s₂
     | Ordering.gt => s₁
 
 /- State smart constructor. -/
-def initialState (sourceName : String) (xs : σ) : @State β σ E :=
+def initialState (sourceName : String) (xs : ℘) : @State β ℘ E :=
   let p₀ := Pos.mk 0
   let posState := PosState.mk xs 0 (SourcePos.mk sourceName p₀ p₀) 2 ""
   State.mk xs 0 posState []
