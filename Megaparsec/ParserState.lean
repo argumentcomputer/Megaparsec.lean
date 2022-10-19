@@ -24,6 +24,10 @@ def sourcePosPretty : SourcePos → String
   | ⟨n, l, c⟩ => let lcStr := s!"{l.pos}:{c.pos}"
     if n.isEmpty then lcStr else s!"{n}:{lcStr}"
 
+def initialSourcePos (sourceName : String) : SourcePos :=
+  let p₁ := Pos.mk 1
+  ⟨sourceName, p₁, p₁⟩
+
 structure Range where
   first : SourcePos
   last : SourcePos
@@ -66,8 +70,10 @@ def longestMatch (s₁ : @State β ℘ E) (s₂ : @State β ℘ E) : @State β �
     | Ordering.eq => s₂
     | Ordering.gt => s₁
 
+private def defaultTabWidth : Nat := 2
+
 /- State smart constructor. -/
 def initialState (sourceName : String) (xs : ℘) : @State β ℘ E :=
-  let p₀ := Pos.mk 0
-  let posState := PosState.mk xs 0 (SourcePos.mk sourceName p₀ p₀) 2 ""
+  let sourcePos := initialSourcePos sourceName
+  let posState := PosState.mk xs 0 sourcePos defaultTabWidth ""
   State.mk xs 0 posState []

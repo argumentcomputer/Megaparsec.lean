@@ -15,11 +15,6 @@ namespace Megaparsec.Errors.StreamErrors
 
 universe u
 
-def errorOffset (e: ParseError β E) : Nat :=
-  match e with
-    | ParseError.trivial n _ _ => n
-    | ParseError.fancy n _     => n
-
 /- Merge errors produced by alternative parsers.
 Strategy:
 
