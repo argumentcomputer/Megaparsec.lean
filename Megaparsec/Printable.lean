@@ -1,6 +1,5 @@
 import YatimaStdLib
 import Straume.Iterator
-import Straume.Bit
 
 open Straume.Iterator
 
@@ -98,7 +97,7 @@ instance : Printable String where
 instance : Printable UInt8 where
   showTokens := stringPretty ∘ Functor.map (fun i => Char.ofNat $ i.toNat)
 
-open Bit in
+open ByteArray in
 instance : Printable Bit where
   showTokens
     | ⟦b⟧ => s!"'{b}'"
