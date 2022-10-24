@@ -25,7 +25,17 @@ namespace MonadParsec
 /-- MonadParsec class and their instances -/
 
 /- Monads m that implement primitive parsers.
-Thus, you see `m γ`, read it "parser m-gamma".  -/
+Thus, you see `m γ`, read it "parser m-gamma".
+
+On type variables:
+
+- `α` is the composite type, which is a type of finite chunks that can be parsed out of `℘`.
+- `β` is the atomic type. That's the type of tokens parsed out of source `℘`.
+- `℘` is the source type. Tokens can be read out of the source via `Straume` facilities. `Straume` allows for transparently reading from files. If you want to read from a file, this type would be `(String × IO.FS.Handle)`. It would mean that finite chunks of type `String` are emitted from a, perhaps-larger-than-RAM file handled with somethign of type `IO.FS.Handle`. See `Main.lean` for a usage example! It's really simple!
+- `E` is the custom error type. For quick and dirty parsers, it's `Unit`, but if you want to get fancy, you can create custom errors and construct those based on your parser's fails.
+- `γ` is the type of the thing we're parsing out of the source.
+
+-/
 class MonadParsec (m : Type u → Type v) (℘ α E β : Type u) where
   /- Stop parsing wherever we are, and report ParseError. -/
   parseError : ParseError β E → m γ
@@ -291,8 +301,8 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u}
 
 instance [Monoid w] [Monad m]
          [mₚ : MonadParsec m ℘ α E β]
-         [mₗ : MonadLiftT m (RWST r w ℘ m)]
-         : MonadParsec (RWST r w ℘ m) ℘ α E β where
+         [mₗ : MonadLiftT m (RWST r w σ m)]
+         : MonadParsec (RWST r w σ m) ℘ α E β where
   parseError err := mₗ.monadLift $ mₚ.parseError ℘ α err
   label l p := fun r s => mₚ.label ℘ α E β l (p r s)
   attempt st := fun r s => mₚ.attempt ℘ α E β (st r s)
@@ -314,9 +324,10 @@ instance [Monoid w] [Monad m]
   getParserState := mₗ.monadLift $ mₚ.getParserState α
   updateParserState φ := mₗ.monadLift $ mₚ.updateParserState α φ
 
-instance [Monad m] [Alternative m]
+instance statetInstance
+         [Monad m] [Alternative m]
          [mₚ : MonadParsec m ℘ α E β]
-         : MonadParsec (StateT ℘ m) ℘ α E β where
+         : MonadParsec (StateT σ m) ℘ α E β where
   parseError err := liftM $ mₚ.parseError ℘ α err
   label l p := (mₚ.label ℘ α E β l) ∘ p
   attempt st := (mₚ.attempt ℘ α E β) ∘ st

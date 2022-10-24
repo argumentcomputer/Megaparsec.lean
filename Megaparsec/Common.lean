@@ -25,11 +25,11 @@ namespace Megaparsec.Common
 
 universe u
 
-def single {m : Type u → Type v} {℘ α E β: Type u} [MonadParsec m ℘ α E β] [BEq β] (x : β): m β :=
+def single {m : Type u → Type v} {℘ α E β: Type u} [MonadParsec m ℘ α E β] [BEq β] (x : β) : m β :=
   MonadParsec.token ℘ α E (fun y => if x == y then .some x else .none) [ErrorItem.tokens $ NEList.uno x]
 
 -- TODO: case-insensitive version
-def string {m : Type u → Type v} {℘ α E β: Type u} [MonadParsec m ℘ α E β] [BEq α] (x : α): m α :=
+def string {m : Type u → Type v} {℘ α E β: Type u} [MonadParsec m ℘ α E β] [BEq α] (x : α) : m α :=
   MonadParsec.tokens ℘ E β (BEq.beq) x
 
 mutual

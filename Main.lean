@@ -61,6 +61,53 @@ def testMyP : IO Unit := do
 
   pure $ Unit.unit
 
+def testStateT : IO Unit := do
+
+  let sample := "“'if at first you don't succeed, try, try, try again!' -- William E. Hickson” -- Day[9]"
+
+  -- Parsec transformed
+  let pt : StateT Nat (ParsecT Id Char String Unit) String := do
+    MonadStateOf.set $ 1
+    let x0 ← MonadStateOf.get
+    let ok ← @string (StateT Nat (ParsecT Id Char String Unit))
+                     String String Unit Char
+                     statetInstance inferInstance
+                     "fail me"
+    MonadStateOf.set $ x0 + 41
+    pure ok
+
+  let parsed ← parseTestP (StateT.run pt 0) sample
+
+  if parsed.1 then
+    IO.println "Error #1 in testStateT"
+  else
+    IO.println "Success #1 in testStateT"
+
+  let pt : StateT Nat (ParsecT Id Char String Unit) String := do
+    MonadStateOf.set $ 1
+    let x0 ← StateT.get
+    (void (@string (StateT Nat (ParsecT Id Char String Unit))
+                   String String Unit Char
+                   statetInstance inferInstance
+                   "fail me") <|> pure ())
+    (MonadStateOf.set $ x0 + 41)
+    pure "beep boop"
+
+  let parsed ← parseTestP (StateT.run pt 0) sample
+
+  if !parsed.1 then
+    IO.println "Error #2 in testStateT"
+  else
+    IO.println "Success #2 in testStateT"
+    match parsed.2 with
+    | .right x =>
+      IO.println "Success #3 in testStateT"
+      match x.2 with
+      | 1 => IO.println "Error #4 in testStateT (1)"
+      | 42 => IO.println "Success #4 in testStateT (42)"
+      | imp => IO.println s!"Impossible error in testStateT ({imp})"
+    | .left _ => IO.println "Error #3 in testStateT"
+
 
 def main : IO Unit := do
   IO.println "Megaparsec demo!"
@@ -184,5 +231,7 @@ def main : IO Unit := do
   match optionResFall1.2 with
   | .right y => IO.println s!"optionResFall1: {y} == hellraiser"
   | _ => IO.println "optionResFall1: FAIL"
+
+  testStateT
 
   IO.println "FIN"
