@@ -60,20 +60,20 @@ structure State (β ℘ E : Type u) where
 /- A result of evaluation of a particular parser. -/
 open Megaparsec.Errors.Result in
 structure Reply (β ℘ γ E : Type u) where
-  state    : @State β ℘ E
+  state    : State β ℘ E
   consumed : Bool
   result   : Result β γ E
 
-def longestMatch (s₁ : @State β ℘ E) (s₂ : @State β ℘ E) : @State β ℘ E :=
+def longestMatch (s₁ : State β ℘ E) (s₂ : State β ℘ E) : State β ℘ E :=
   match compare s₁.offset s₂.offset with
     | Ordering.lt => s₂
     | Ordering.eq => s₂
     | Ordering.gt => s₁
 
-private def defaultTabWidth : Nat := 2
+def defaultTabWidth : Nat := 2
 
 /- State smart constructor. -/
-def initialState (sourceName : String) (xs : ℘) : @State β ℘ E :=
+def initialState (sourceName : String) (xs : ℘) : State β ℘ E :=
   let sourcePos := initialSourcePos sourceName
   let posState := PosState.mk xs 0 sourcePos defaultTabWidth ""
   State.mk xs 0 posState []
