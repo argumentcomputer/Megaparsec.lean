@@ -2,7 +2,7 @@ namespace Megaparsec.Pos
 
 structure Pos where
   pos : Nat
-  deriving Repr, DecidableEq
+  deriving Repr, DecidableEq, Ord
 
 instance : ToString Pos where
   toString x := s!"{x.pos}"

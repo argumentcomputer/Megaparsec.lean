@@ -35,6 +35,8 @@ open Straume.Coco
 open Straume.Iterator (Iterable)
 open Straume.Iterator renaming Bijection → Iterable.Bijection
 
+section
+
 structure Consumed where
 structure Empty where
 
@@ -139,8 +141,10 @@ def longestMatch (s₀ : State β ℘ E) (s₁ : State β ℘ E) : State β ℘ 
 
 open StreamErrors in
 open Outcome in
-instance : Alternative (ParsecT m β ℘ E) where
-  failure := fun _ s _ _ _ eerr => eerr.2 (.trivial s.offset Option.none []) s
+instance [Ord β] : Alternative (ParsecT m β ℘ E) where
+  failure := fun _ s _ _ _ eerr =>
+    let empty : Std.RBMap (ErrorItem β) Unit compare := default
+    eerr.2 (.trivial s.offset .none empty) s
   orElse guess thunk :=
     fun xi s cok cerr eok eerr =>
       let fallback err ms :=
@@ -161,8 +165,9 @@ instance : Alternative (ParsecT m β ℘ E) where
 --         (thunk ()) xi s cok (cerr.1, nge cerr.2) (eok.1, ng) (eerr.1, nge eerr.2)
 --     guess xi s cok cerr eok (eerr.1, fallback)
 
-instance : Inhabited (ParsecT m β ℘ E γ) where
+instance [Ord β] : Inhabited (ParsecT m β ℘ E γ) where
   default := Alternative.failure
+
 
 ---=========================================================--
 ---================= IMPORTANT FUNCTIONS ===================--
@@ -214,6 +219,8 @@ def parseT (p : ParsecT m β ℘ E γ) (xs : ℘) [Monad m] :=
 
 def parse (p : Parsec β ℘ E γ) (xs : ℘) :=
   parseP p "" xs
+
+end
 
 def parsesT? (p : ParsecT m β ℘ E γ) (xs : ℘) [Monad m] :=
   parseT p xs >>= (pure ∘ Either.isRight)

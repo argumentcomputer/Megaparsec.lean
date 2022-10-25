@@ -2,6 +2,12 @@ import Megaparsec.Errors
 import Megaparsec.Errors.ParseError
 import Megaparsec.ParserState
 
+import YatimaStdLib
+
+open Std (RBMap)
+
+open Std.RBMap (unitMap)
+
 open Megaparsec.Errors
 open Megaparsec.Errors.ParseError
 open Megaparsec.ParserState
@@ -16,7 +22,9 @@ def Err (m : Type f → Type v) (β ℘ E : Type u) (ξ : Type f) :=
 hints @hs@ to third argument of original continuation c.
 -/
 def withHints (hs : Hints β)
-              (f : Err m β ℘ γ ξ) : Err m β ℘ γ ξ :=
+              (f : Err m β ℘ E ξ) : Err m β ℘ E ξ :=
   fun e => match e with
-  | .trivial pos us hs₀ => f $ .trivial pos us (List.join $ hs₀ :: hs)
+  | .trivial pos us hs₀ =>
+      let hs' := unitMap $ List.join hs
+      f $ .trivial pos us $ hs₀ ++ hs'
   | _ => f e

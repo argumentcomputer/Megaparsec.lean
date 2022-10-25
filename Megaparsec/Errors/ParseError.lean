@@ -1,24 +1,49 @@
 import Megaparsec.Errors
 import Megaparsec.Printable
+import YatimaStdLib
+
+open Std (RBMap)
 
 open Megaparsec.Errors
 open Megaparsec.Printable
 
 namespace Megaparsec.Errors.ParseError
 
+section
+
 inductive ParseError (β E : Type u) where
   | trivial (offset: Nat)
             (unexpected: Option (ErrorItem β))
-            (expected: List (ErrorItem β))
-  --                 TODO: I think this should be a Set
-  --                                 |
-  --                                 v
-  | fancy (offset: Nat) (expected: List (ErrorFancy E))
+            (expected: RBMap (ErrorItem β) Unit
+                             (cmp : ErrorItem β → ErrorItem β → Ordering))
+  | fancy (offset: Nat) (expected: RBMap (ErrorFancy E) Unit
+                             (cmp : ErrorFancy E → ErrorFancy E → Ordering))
 
 -- Get the offset of a `ParseError`.
 def errorOffset : ParseError β E → Nat
   | .trivial offset _ _ => offset
   | .fancy   offset _   => offset
+
+/-
+  Because we want to not require any instances in structures and type class
+  definitions, we define this not particularly well-defined function that
+  merges two unit maps regardless of `cmp` functions, always merging _into_
+  the first `RBMap`, i.e. the result will have `cmp` function of
+  the first argument.
+
+  This function is very jackal and ideally should not be used at all.
+
+  TODO: better solution that still doesn't involve `Ord` in `ParseError`?
+-/
+def mergeKeySetsAny (t₁ : RBMap α Unit cmp₁) (t₂ : RBMap α Unit cmp₂)
+                    : RBMap α Unit cmp₁ :=
+  t₂.fold (init := t₁) fun t₁ a b₂ =>
+    t₁.insert a <|
+      match t₁.find? a with
+      | some b₁ => b₁
+      | none => b₂
+
+end
 
 section
 
@@ -57,11 +82,11 @@ def parseErrorTextPretty : ParseError β E → String
       else
         let o := Option.map (fun ei => [toString ei]) us
         messageItemsPretty "unexpected " (o.getD []) ++
-        messageItemsPretty "expecting " (List.map toString es)
+        messageItemsPretty "expecting " (List.map toString es.keys.toList)
   | .fancy _ es =>
     if es.isEmpty
       then "unknown fancy parse error"
-      else String.intercalate "\n" $ List.map toString es
+      else String.intercalate "\n" $ List.map toString es.keys.toList
 
 def parseErrorPretty (e : ParseError β E) : String :=
   s!"offset={errorOffset e}:\n{parseErrorTextPretty e}"
