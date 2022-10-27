@@ -108,6 +108,13 @@ def testStateT : IO Unit := do
       | imp => IO.println s!"Impossible error in testStateT ({imp})"
     | .left _ => IO.println "Error #3 in testStateT"
 
+def duplicateErrorsTest : IO Unit := do
+  IO.println "Let's make sure that duplicate errors aren't reported!"
+  IO.println "The expected list should include 'yatima' and 'yatima!'"
+  IO.println "one time each, instead of 'yatima' being reported twice."
+  let p  : Parsec Char String Unit String := string "yatima"
+  let p' : Parsec Char String Unit String := string "yatima!"
+  let _ ← parseTestP (p <|> p <|> p') "Yatima"
 
 def main : IO Unit := do
   IO.println "Megaparsec demo!"
@@ -134,6 +141,9 @@ def main : IO Unit := do
   | .right _ => IO.println "Hmm, the parser didn't fail. That's a bug!"
   IO.println "But let's make sure that ypp parser actually works."
   let _yg : (Bool × Either Unit String) ← parseTestP ypp source
+
+  IO.println ""
+  duplicateErrorsTest
 
   let file := System.mkFilePath ["./Tests", "abcd.txt"]
   let h ← IO.FS.Handle.mk file IO.FS.Mode.read false
