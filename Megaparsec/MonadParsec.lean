@@ -9,6 +9,9 @@ import Straume.Iterator
 
 import YatimaStdLib
 
+open Std (RBMap)
+open Std.RBMap (single unitMap)
+
 open Megaparsec.Errors
 open Megaparsec.Errors.ParseError
 open Megaparsec.Errors.StreamErrors
@@ -122,7 +125,7 @@ private def nelstr (x : Char) (xs : String) := match NEList.nonEmptyString xs wi
 
 @[defaultInstance]
 instance theInstance {m : Type u → Type v} {α β ℘ E : Type u}
-                     [Monad m] [Iterable α β] [Iterable.Bijection β α] [Inhabited α] [@Straume m ℘ Chunk α β]
+                     [Monad m] [Iterable α β] [Iterable.Bijection β α] [Inhabited α] [@Straume m ℘ Chunk α β] [Ord β] [Ord E]
                      : MonadParsec (ParsecT m β ℘ E) ℘ α E β where
 
   parseError e := fun _xi s _cok _cerr _eok eerr => eerr.2 e s
@@ -137,7 +140,9 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u}
       eok.2 x s' $ refreshLastHint hs el
     let ge err := eerr.2 $
       match err with
-      | ParseError.trivial pos us _ => .trivial pos us (Option.option [] (fun x => [x]) el)
+      | ParseError.trivial pos us _ =>
+        let empty : RBMap (ErrorItem β) Unit compare := default
+        .trivial pos us (Option.option empty (fun x => single x ()) el)
       | _ => err
     p xi s (cok.1, f) cerr (eok.1, g) (eerr.1, ge)
 
@@ -159,7 +164,8 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u}
     | .nil => ErrorItem.eof -- If by the time we call notFollowedBy the stream is empty, treat it as eof.
     | .cont c => c2e c
     | .fin (c, _reason) => c2e c -- It's ok to work with .fin, because we never consume.
-    let ok _ _ _ := eerr.2 (.trivial o subject []) s
+    let empty : RBMap (ErrorItem β) Unit compare := default
+    let ok _ _ _ := eerr.2 (.trivial o subject empty) s
     let err _ _ := eok.2 PUnit.unit s []
     p xi s (Consumed.mk, ok) (Consumed.mk, err) (Empty.mk, ok) (Empty.mk, err)
 
@@ -176,7 +182,8 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u}
 
   eof := fun _ s _ _ eok eerr => do
       let y : (Chunk β × ℘) ← Straume.take1 α s.input
-      let err c := eerr.2 (.trivial s.offset (.some $ ErrorItem.tokens $ NEList.uno c) ([.eof])) s
+      let singleton : RBMap (ErrorItem β) Unit compare := single .eof ()
+      let err c := eerr.2 (.trivial s.offset (.some $ ErrorItem.tokens $ NEList.uno c) singleton) s
       match y.1 with
       | .nil => eok.2 PUnit.unit s []
       | .cont c => err c
@@ -186,12 +193,13 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u}
     -- TODO: Uhh, if y : γ, then we should really not call these variables "y"
     -- In reality, they are cctx ot csctx.
     let y : (Chunk β × ℘) ← Straume.take1 α s.input
+    let map : RBMap (ErrorItem β) Unit compare := unitMap errorCtx
     let test c := match ρ c with
     | .none =>
-      eerr.2 (.trivial s.offset (.some $ ErrorItem.tokens $ NEList.uno c) errorCtx) s
+      eerr.2 (.trivial s.offset (.some $ ErrorItem.tokens $ NEList.uno c) map) s
     | .some y' => cok.2 y' {s with offset := s.offset + 1, input := y.2} []
     match y.1 with
-    | .nil => eerr.2 (.trivial s.offset (.some ErrorItem.eof) errorCtx) s
+    | .nil => eerr.2 (.trivial s.offset (.some ErrorItem.eof) map) s
     | .cont c => test c
     | .fin (c, _) => test c
 
@@ -201,8 +209,8 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u}
     let unexpect pos' u :=
       let got := pure u
       let want := match NEList.nonEmpty (Iterable.toList l) with
-        | .none => []
-        | .some nel => [ ErrorItem.tokens nel ]
+        | .none => (default : RBMap (ErrorItem β) Unit compare)
+        | .some nel => single (ErrorItem.tokens nel) ()
       ParseError.trivial pos' got want
     let test r := if f l r
       then
@@ -245,7 +253,7 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u}
       match el with
       | .none => []
       | .some ell => [[ell]]
-    let want := hs.headD []
+    let want : RBMap (ErrorItem β) Unit compare := unitMap $ hs.headD []
     let res cs y := do
       let n := Iterable.length cs
       if (n == 0) then
@@ -280,7 +288,7 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u}
       match el with
       | .none => []
       | .some ell => [[ell]]
-    let want := hs.headD []
+    let want : RBMap (ErrorItem β) Unit compare := unitMap $ hs.headD []
     let y : (Chunk α × ℘) ← Straume.takeN n s.input
     let ok cs := cok.2 cs {s with offset := s.offset + n, input := y.2} hs
     match y.1 with
@@ -299,7 +307,7 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u}
   updateParserState φ := fun _ s _ _ eok _ =>
     eok.2 PUnit.unit (φ s) []
 
-instance [Monoid w] [Monad m]
+instance [Monoid w] [Monad m] [Ord β] [Ord E]
          [mₚ : MonadParsec m ℘ α E β]
          [mₗ : MonadLiftT m (RWST r w σ m)]
          : MonadParsec (RWST r w σ m) ℘ α E β where
@@ -325,7 +333,7 @@ instance [Monoid w] [Monad m]
   updateParserState φ := mₗ.monadLift $ mₚ.updateParserState α φ
 
 instance statetInstance
-         [Monad m] [Alternative m]
+         [Monad m] [Alternative m] [Ord β] [Ord E]
          [mₚ : MonadParsec m ℘ α E β]
          : MonadParsec (StateT σ m) ℘ α E β where
   parseError err := liftM $ mₚ.parseError ℘ α err
@@ -362,6 +370,8 @@ end MonadParsec
 namespace Megaparsec
 
 open MonadParsec
+
+section
 
 def parseError {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec m ℘ α E β] {γ : Type u}
   : Megaparsec.Errors.ParseError.ParseError β E → m γ :=
@@ -424,5 +434,7 @@ def getParserState {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.Mon
 def updateParserState {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β]
   : (Megaparsec.ParserState.State β ℘ E → Megaparsec.ParserState.State β ℘ E)-> m PUnit :=
   MonadParsec.MonadParsec.updateParserState α
+
+end
 
 end Megaparsec
