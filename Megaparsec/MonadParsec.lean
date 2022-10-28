@@ -123,7 +123,7 @@ private def nelstr (x : Char) (xs : String) := match NEList.nonEmptyString xs wi
   | .some xs' => NEList.cons x xs'
   | .none => NEList.uno x
 
-@[defaultInstance]
+@[default_instance]
 instance theInstance {m : Type u → Type v} {α β ℘ E : Type u}
                      [Monad m] [Iterable α β] [Iterable.Bijection β α] [Inhabited α] [@Straume m ℘ Chunk α β] [Ord β] [Ord E]
                      : MonadParsec (ParsecT m β ℘ E) ℘ α E β where
