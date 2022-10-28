@@ -75,6 +75,7 @@ def messageItemsPretty (pref : String) (ts : List String) : String :=
   except for its position. The rendered `String` always ends with a
   newline.
 -/
+open Std.RBMap in
 def parseErrorTextPretty : ParseError β E → String
   | .trivial _ us es =>
     if us.isNone && es.isEmpty
@@ -82,11 +83,11 @@ def parseErrorTextPretty : ParseError β E → String
       else
         let o := Option.map (fun ei => [toString ei]) us
         messageItemsPretty "unexpected " (o.getD []) ++
-        messageItemsPretty "expecting " (List.map toString es.keys.toArray.toList)
+        messageItemsPretty "expecting " (List.map toString $ toList es.keys)
   | .fancy _ es =>
     if es.isEmpty
       then "unknown fancy parse error"
-      else String.intercalate "\n" $ List.map toString es.keys.toArray.toList
+      else String.intercalate "\n" $ List.map toString $ toList es.keys
 
 def parseErrorPretty (e : ParseError β E) : String :=
   s!"offset={errorOffset e}:\n{parseErrorTextPretty e}"
