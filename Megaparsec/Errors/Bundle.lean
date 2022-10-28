@@ -27,7 +27,7 @@ private def makePEBfs [Printable β] [ToString E] [Streamable ℘] : ((String �
           | .trivial _     none _ => 1
           | .trivial _ (some x) _ => errorItemLength x
           | .fancy   _         xs =>
-            xs.fold (fun acc e _ => max acc (errorFancyLength e)) 1
+            xs.foldl (fun acc e _ => max acc (errorFancyLength e)) 1
         let rpshift := epos.column.pos - 1
         let pointerLen :=
           if rpshift + elen > sline.length

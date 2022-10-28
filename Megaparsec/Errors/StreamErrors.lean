@@ -4,6 +4,7 @@ import YatimaStdLib
 import Straume.Iterator
 import Megaparsec.Ok
 import Megaparsec.Err
+import Std.Data.RBMap
 
 open Straume.Iterator (Iterable)
 open Megaparsec.Errors
@@ -51,7 +52,7 @@ def toHints (streamPos : Nat) (e : ParseError β E) : Hints β :=
     | ParseError.fancy _ _ => []
     | ParseError.trivial errOffset _ ps =>
         if streamPos == errOffset
-           then (if ps.isEmpty then [] else [ps.keys.toList])
+           then (if ps.isEmpty then [] else [ps.keys])
            else []
 
 def refreshLastHint (h : Hints β) (m : Option (ErrorItem β)) : Hints β :=
