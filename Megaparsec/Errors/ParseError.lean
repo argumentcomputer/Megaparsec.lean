@@ -37,7 +37,7 @@ def errorOffset : ParseError β E → Nat
 -/
 def mergeKeySetsAny (t₁ : RBMap α Unit cmp₁) (t₂ : RBMap α Unit cmp₂)
                     : RBMap α Unit cmp₁ :=
-  t₂.fold (init := t₁) fun t₁ a b₂ =>
+  t₂.foldl (init := t₁) fun t₁ a b₂ =>
     t₁.insert a <|
       match t₁.find? a with
       | some b₁ => b₁
@@ -82,11 +82,11 @@ def parseErrorTextPretty : ParseError β E → String
       else
         let o := Option.map (fun ei => [toString ei]) us
         messageItemsPretty "unexpected " (o.getD []) ++
-        messageItemsPretty "expecting " (List.map toString es.keys.toList)
+        messageItemsPretty "expecting " (List.map toString es.keys.toArray.toList)
   | .fancy _ es =>
     if es.isEmpty
       then "unknown fancy parse error"
-      else String.intercalate "\n" $ List.map toString es.keys.toList
+      else String.intercalate "\n" $ List.map toString es.keys.toArray.toList
 
 def parseErrorPretty (e : ParseError β E) : String :=
   s!"offset={errorOffset e}:\n{parseErrorTextPretty e}"

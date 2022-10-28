@@ -1,5 +1,6 @@
 /build
-/lean_packages
+/lean_packages/*
+!/lean_packages/manifest.json
 
 # Ignore nix stuff, just in case?
 /result

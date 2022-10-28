@@ -51,7 +51,7 @@ def toHints (streamPos : Nat) (e : ParseError β E) : Hints β :=
     | ParseError.fancy _ _ => []
     | ParseError.trivial errOffset _ ps =>
         if streamPos == errOffset
-           then (if ps.isEmpty then [] else [ps.keys.toList])
+           then (if ps.isEmpty then [] else [ps.keys.toArray.toList])
            else []
 
 def refreshLastHint (h : Hints β) (m : Option (ErrorItem β)) : Hints β :=
