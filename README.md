@@ -44,6 +44,8 @@ Note that you could have used the same trick, but via `Seq` to substitute the re
 For example, you could have just as well written `(c.eol <|> c.eof *> pure "FIN")`.
 We wouldn't care, since the parsed value gets discarded anyway due to `<*` (left sparrow) operator between `stringP` and the sub-parser in question.
 
+There are also some examples in the [Exambles](Examples) folder.
+
 ## Running the parser
 
 To simply manually test the parser you wrote, you can use `runParseTestP`:
