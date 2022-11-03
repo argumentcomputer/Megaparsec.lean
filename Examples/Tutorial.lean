@@ -76,9 +76,13 @@ We also consume blank characters before and
 -/
 partial def grammarP : P Grammar := do
   blanksP -- discard blank characters before anything
-  let x ← atomP <|> listP
+  let x : Grammar ← atomP <|> listP
   return x
 
+/--
+Lists must start and end with parentheses, with any number of grammar elements
+in between.
+-/
 partial def listP : P Grammar := do
   discard $ single '('
   blanksP -- this is necessary for empty lists, otherwise `grammarP` would crash
