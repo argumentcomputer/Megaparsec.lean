@@ -4,8 +4,10 @@ import Megaparsec.String
 # A Megaparsec tutorial
 
 In this tutorial we will cover a simple (yet not trivial) use case for Megaparsec.
-Let's parse the source code of a simplified and non-structured Lisp-like language.
+We will stick to basic tools of Megaparsec, but keep in mind that there are more
+high level combinators available that would be covered in another tutorial.
 
+Let's parse the source code of a simplified and non-structured Lisp-like language.
 We want our parser to accept atomic symbols, numbers or parenthesized sequences of those.
 For example, the following would be valid sources for our language:
 
@@ -42,7 +44,7 @@ def symP : P Grammar := do
   return .sym $ ⟨c :: cs⟩
 
 /--
-Let's call numbers and symbols by "atoms".
+Let's call numbers and symbols "atoms".
 First we try to parse a number and if it fails we try to parse a symbol -/
 def atomP : P Grammar :=
   numP <|> symP
@@ -82,6 +84,9 @@ partial def grammarP : P Grammar := do
 /--
 Lists must start and end with parentheses, with any number of grammar elements
 in between.
+
+This function could be implemented with `between` and `sebEndBy`, but, again,
+let's try to stick to the simplest tools in this tutorial.
 -/
 partial def listP : P Grammar := do
   discard $ single '('
@@ -112,4 +117,3 @@ def parseGrammar (code : String) : Except String Grammar :=
 -- Except.ok
 --  (Grammar.cons (Grammar.sym "add") (Grammar.cons (Grammar.num 0)
 --    (Grammar.cons (Grammar.num 3) (Grammar.nil))))
-
