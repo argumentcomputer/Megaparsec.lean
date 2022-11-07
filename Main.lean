@@ -62,13 +62,10 @@ def testStateT : IO Unit := do
   let sample := "“'if at first you don't succeed, try, try, try again!' -- William E. Hickson” -- Day[9]"
 
   -- Parsec transformed
-  let pt : StateT Nat (ParsecT Id Char String Unit) String := do
+  let pt : StateT Nat (Parsec Char String Unit) String := do
     MonadStateOf.set $ 1
     let x0 ← MonadStateOf.get
-    let ok ← @string (StateT Nat (ParsecT Id Char String Unit))
-                     String String Unit Char
-                     statetInstance inferInstance
-                     "fail me"
+    let ok ← string (i := statetInstance) "fail me"
     MonadStateOf.set $ x0 + 41
     pure ok
 
@@ -79,13 +76,10 @@ def testStateT : IO Unit := do
   else
     IO.println "Success #1 in testStateT"
 
-  let pt : StateT Nat (ParsecT Id Char String Unit) String := do
+  let pt : StateT Nat (Parsec Char String Unit) String := do
     MonadStateOf.set $ 1
     let x0 ← StateT.get
-    (void (@string (StateT Nat (ParsecT Id Char String Unit))
-                   String String Unit Char
-                   statetInstance inferInstance
-                   "fail me") <|> pure ())
+    (discard (string (i := statetInstance) "fail me") <|> pure ())
     (MonadStateOf.set $ x0 + 41)
     pure "beep boop"
 
