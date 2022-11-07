@@ -8,34 +8,30 @@ import YatimaStdLib
 import Straume.Coco
 import Megaparsec.Char
 import Megaparsec.Lisp
-import Megaparsec.String
 
 open LSpec
-open Megaparsec.Parsec
+
 open Straume.Coco
+
+open Megaparsec
+open Megaparsec.Parsec
 open Megaparsec.Errors.Bundle
-open MonadParsec
 open Megaparsec.ParserState
 open Megaparsec.Char
 open Megaparsec.Lisp
-open Megaparsec.String
+open MonadParsec
 
 open Megaparsec.Common
+open LispParser
 
 private def cs : Parsec Char String Unit Char :=
-  let cs : CharSimple (Parsec Char String Unit) String Unit := {}
-  cs.char' 'y'
-
-def s := string_simple_pure
-def c := char_simple_pure
-def sIO := string_parsecT IO (String × IO.FS.Handle)
-def cIO := char_parsecT IO (String × IO.FS.Handle)
+  char' 'y'
 
 def laLexer : Parsec Char String Unit String :=
-  s.lookAhead ((s.stringP "|" <* (c.eol <|> c.eof *> pure "FIN")) <|> s.stringP " ")
+  lookAhead ((string "|" <* (eol <|> eof *> pure "FIN")) <|> string " ")
 
 def numP : Parsec Char String Unit Nat :=
-  (c.oneOf "0123456789".data) >>= fun x => pure $ x.val.toNat - '0'.val.toNat
+  (oneOf "0123456789".data) >>= fun x => pure $ x.val.toNat - '0'.val.toNat
 
 def myP : Parsec Char String Unit (List Nat) :=
   many' (numP <* laLexer)
@@ -140,35 +136,33 @@ def main : IO Unit := do
   | .left peb => IO.println $ ToString.toString peb
   | .right _ => IO.println "Hmm, the parser didn't fail. That's a bug!"
   IO.println "But let's make sure that ypp parser actually works."
-  let _yg : (Bool × Either Unit String) ← parseTestP ypp source
+  let _yg ← parseTestP ypp source
 
   IO.println ""
   duplicateErrorsTest
 
+  let PIO := ParsecT IO Char (String × IO.FS.Handle) Unit
+
   let file := System.mkFilePath ["./Tests", "abcd.txt"]
   let h ← IO.FS.Handle.mk file IO.FS.Mode.read false
   let bh := ("", h)
-  let S := (String × IO.FS.Handle)
-  let Q := ParsecT IO Char S Unit
-  -- let abcdp := (string Q S "abcd" <* MonadParsec.eof S String)
-  let abcdpnl : Q String := do
+  let abcdpnl : PIO String := do
     let res1 ← (string "ab")
     let res2 ← (string "cd")
     let _nl ← (string "\n")
     let _eos ← Megaparsec.eof
     pure $ res1 ++ res2
   IO.println "Let's see if @ixahedron's test passes."
-  let _ix : (Bool × Either Unit String) ← parseTestTP abcdpnl bh
+  let _ix ← parseTestTP abcdpnl bh
   let h1 ← IO.FS.Handle.mk (System.mkFilePath ["./Tests", "abcd-no-nl.txt"]) IO.FS.Mode.read false
-  let abcd : Q String := (string "abcd" <* MonadParsec.eof S String Unit Char)
-  let _ixx : (Bool × Either Unit String) ← parseTestTP abcd ("", h1)
+  let abcd : PIO String := string "abcd" <* eof
+  let _ixx ← parseTestTP abcd ("", h1)
 
   IO.println "Ergonomic version of @ixahedron's test."
-  let file := System.mkFilePath ["./Tests", "abcd.txt"]
   let h ← IO.FS.Handle.mk file IO.FS.Mode.read false
   let buffed := ("", h)
   let res ← parseTP
-    (sIO.stringP "ab" *> sIO.stringP "cd" <* cIO.eol <* cIO.eof)
+    ((string "ab" *> string "cd" <* eol <* eof) : PIO String)
     "abcd.txt"
     buffed
   match res with
@@ -176,34 +170,32 @@ def main : IO Unit := do
   | .left _ => IO.println "Ergonomic version doesn't work."
 
   IO.println "We have also done a lot of work to export specified versions of things."
-  let _xx : (Bool × Either Unit Char) ← parseTestP cs "Yatima!"
+  let _xx ← parseTestP cs "Yatima!"
 
   IO.println "This stuff is also exported for your convenience."
-  let _xxx : (Bool × Either Unit Char) ← parseTestP (char_simple_pure.char' 'Y') "yatima!"
+  let _xxx ← parseTestP (char' 'Y' : P Char) "yatima!"
 
   IO.println "Is eol buggy?"
-  let _eol ← parseTestP char_simple_pure.eol "\n"
+  let _eol ← parseTestP (eol : P String) "\n"
 
   IO.println "Is eof buggy?"
-  let _eof ← parseTestP char_simple_pure.eof ""
-
-  -- LISP!
-  let lp : LispLinearParsers Id String := {}
+  let _eof ← parseTestP (eof : P Unit) ""
 
   IO.println "Is many bugged?!"
-  let _many : (Bool × Either Unit (List String)) ← parseTestP (many' (lp.s.stringP "Yatima")) ""
-  let _many : (Bool × Either Unit (List String)) ← parseTestP (many' (lp.s.stringP "Yatima")) "YatimaYatimaYat33ma"
+  let _many ← parseTestP (many' (string "Yatima")) ""
+  let _many ← parseTestP (many' (string "Yatima")) "YatimaYatimaYat33ma"
 
   IO.println "Is some bugged?!"
-  let _some : (Bool × Either Unit (List String)) ← parseTestP (some' (lp.s.stringP "Yatima")) ""
-  let _some : (Bool × Either Unit (List String)) ← parseTestP (some' (lp.s.stringP "Yatima")) "YatimaYatimaYat33ma"
+  let _some ← parseTestP (some' (string "Yatima")) ""
+  let _some ← parseTestP (some' (string "Yatima")) "YatimaYatimaYat33ma"
 
   IO.println "Let's check that sepEndBy1' works..."
-  let _dbg2 : (Bool × Either Unit (List String)) ← parseTestP (sepEndBy1' (lp.s.stringP "yatima") lp.ignore) "yatima yatima"
+  let _dbg2 ← parseTestP (sepEndBy1' (string "yatima") ignore) "yatima yatima"
 
+  -- LISP!
   IO.println "Let's see if Lisp sub-parsers work?"
-  let _dbg : (Bool × Either Unit (List String)) ← parseTestP (lp.ignore) "   "
-  let _dbg1 : (Bool × Either Unit (List String)) ← parseTestP (lp.ignore) "  ; hello, world!"
+  let _dbg ← parseTestP ignore "   "
+  let _dbg1 ← parseTestP ignore "  ; hello, world!"
   if _dbg.1 && _dbg1.1 then
     IO.println "Whitespace and comment works!"
   else
@@ -212,11 +204,11 @@ def main : IO Unit := do
   IO.println "Let's parse some Lisp?"
   -- let _xxxx : (Bool × Either Unit Lisp) ← parseTestP (lispParser String) "(((\"a\") \"b\")) ; lol)"
   -- let _xxxx : (Bool × Either Unit Lisp) ← parseTestP (lispParser String) "(\"a\" )"
-  let _xxxx : (Bool × Either Unit Lisp) ← parseTestP (lispParser Id String) "(\"hello\" (\"beautiful\" \"world\")) ; ())(lol n1 bug ))())"
+  let _xxxx ← parseTestP lispParser "(\"hello\" (\"beautiful\" \"world\")) ; ())(lol n1 bug ))())"
 
   IO.println "Option works!"
-  let optionAsP : Parsec Char String Unit String := string "hello"
-  let optionBsP : Parsec Char String Unit String := string "hellraiser"
+  let optionAsP : P String := string "hello"
+  let optionBsP : P String := string "hellraiser"
   -- optionRes is a successful parse holding .none
   let optionRes ← parseTestP (option optionAsP) "hellraiser"
   let optionDo :=

@@ -357,7 +357,7 @@ instance statetInstance
   getParserState := liftM $ mₚ.getParserState α
   updateParserState φ := liftM $ mₚ.updateParserState α φ
 
-def withRange (α : Type u) (p : ParsecT m β ℘ E (Range → γ)) [MonadParsec (ParsecT m β ℘ E) ℘ α E β] : ParsecT m β ℘ E γ := do
+def withRange (α : Type u) (p : ParsecT m β ℘ E (Range → γ)) [i : MonadParsec (ParsecT m β ℘ E) ℘ α E β] : ParsecT m β ℘ E γ := do
   let s₀ : State β ℘ E ← MonadParsec.getParserState α
   let first := s₀.posState.sourcePos
   let go ← p
@@ -377,7 +377,7 @@ def parseError {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec m ℘ �
   : Megaparsec.Errors.ParseError.ParseError β E → m γ :=
   MonadParsec.MonadParsec.parseError ℘ α
 
-def label {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β] {γ : Type u}
+def label {m: Type u → Type v} {℘ α E β: Type u} [i : MonadParsec.MonadParsec m ℘ α E β] {γ : Type u}
   : String → m γ → m γ :=
   MonadParsec.MonadParsec.label ℘ α E β
 
@@ -385,7 +385,7 @@ def hidden {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec
   : m γ → m γ :=
   MonadParsec.MonadParsec.hidden ℘ α E β
 
-def attempt {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β] {γ : Type u}
+def attempt {m: Type u → Type v} {℘ α E β: Type u} [i : MonadParsec.MonadParsec m ℘ α E β] {γ : Type u}
   : m γ → m γ :=
   MonadParsec.MonadParsec.attempt ℘ α E β
 
@@ -405,7 +405,7 @@ def observing {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadPar
   : m γ → m (Either (Megaparsec.Errors.ParseError.ParseError β E) γ) :=
   MonadParsec.MonadParsec.observing ℘ α
 
-def eof {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β] : m PUnit :=
+def eof {m: Type u → Type v} {℘ α E β: Type u} [i : MonadParsec.MonadParsec m ℘ α E β] : m PUnit :=
   MonadParsec.MonadParsec.eof ℘ α E β
 
 def token {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β]
