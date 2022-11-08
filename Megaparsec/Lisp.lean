@@ -29,6 +29,7 @@ def specialChars := '"' :: ('\\' :: "()#,'`| ;".data)
 inductive Lisp where
 | string : (String × Range) → Lisp
 | list : (List Lisp × Range) → Lisp
+  deriving Repr, BEq
 
 private def strToString (sr : (String × Range)) : String := s!"\"{sr.1}\""
 private partial def listLispToList (xsr : (List Lisp × Range)) : List String :=
@@ -61,11 +62,11 @@ def stringP := label (i := im) "string" $ do
       String.mk <$> (manyP m ℘ Char Unit $ quoteAnyChar <|> noneOf (i := im) "\\\"".data)
   pure $ fun r => Lisp.string (str, r)
 
-def commentP := label (i := im) "comment" $
-  single (i := im) ';' *>
-  manyP m ℘ Char Unit
-    (noneOf  (i := im) "\r\n".data) *>
-    (Megaparsec.Char.eol (im := im) <|> (eof (i := im) *> pure ""))
+def commentP := label (i := im) "comment" $ do
+  discard $ single (i := im) ';'
+  let comment ← manyP m ℘ Char Unit $ noneOf (i := im) "\r\n".data
+  discard $ Megaparsec.Char.eol (im := im) <|> (eof (i := im) *> pure "")
+  pure $ s!";{String.mk comment}"
 
 def ignore :=
   manyP m ℘ Char Unit $ single (i := im) ' ' *> pure " " <|> commentP
