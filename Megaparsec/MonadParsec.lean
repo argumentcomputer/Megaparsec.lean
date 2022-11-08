@@ -3,6 +3,7 @@ import Megaparsec.Errors.ParseError
 import Megaparsec.Errors.StreamErrors
 import Megaparsec.Parsec
 import Megaparsec.ParserState
+import Megaparsec.Streamable
 import Straume
 import Straume.Chunk
 import Straume.Iterator
@@ -16,6 +17,7 @@ open Megaparsec.Errors.ParseError
 open Megaparsec.Errors.StreamErrors
 open Megaparsec.Parsec
 open Megaparsec.ParserState
+open Megaparsec.Streamable
 open Straume
 open Straume.Chunk
 open Straume.Iterator (Iterable)
@@ -123,7 +125,7 @@ private def nelstr (x : Char) (xs : String) := match NEList.nonEmptyString xs wi
   | .none => NEList.uno x
 
 @[default_instance]
-instance theInstance {m : Type u → Type v} {α β ℘ E : Type u}
+instance theInstance {m : Type u → Type v} {α β ℘ E : Type u} [Streamable ℘]
                      [Monad m] [Iterable α β] [Iterable.Bijection β α] [Inhabited α] [@Straume m ℘ Chunk α β] [Ord β] [Ord E]
                      : MonadParsec (ParsecT m β ℘ E) ℘ α E β where
 
@@ -196,7 +198,9 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u}
     let test c := match ρ c with
     | .none =>
       eerr.2 (.trivial s.offset (.some $ ErrorItem.tokens $ NEList.uno c) set) s
-    | .some y' => cok.2 y' {s with offset := s.offset + 1, input := y.2} []
+    | .some y' =>
+      let offset' := s.offset + 1
+      cok.2 y' {s with offset := offset', input := y.2, posState := reachOffsetNoLine offset' s.posState } []
     match y.1 with
     | .nil => eerr.2 (.trivial s.offset (.some ErrorItem.eof) set) s
     | .cont c => test c
@@ -213,7 +217,8 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u}
       ParseError.trivial pos' got want
     let test r := if f l r
       then
-        let s' := { s with offset := s.offset + n, input := y.2 }
+        let offset' := s.offset + n
+        let s' := { s with offset := offset', input := y.2, posState := reachOffsetNoLine offset' s.posState }
         (if n == 0 then eok.2 else cok.2) r s' []
       else
         let got₀ := match NEList.nonEmpty (Iterable.toList r) with
@@ -237,8 +242,12 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u}
     match y.1 with
     | .nil => eok.2 default {s with input := y.2} hs
     -- TODO: Maybe it's just <$> for Chunk? Do we have Functor? I forget.
-    | .cont cs => cok.2 cs  {s with input := y.2, offset := s.offset + Iterable.length cs} hs -- TODO: Why hs, not [] ?
-    | .fin (cs, _) => cok.2 cs  {s with input := y.2, offset := s.offset + Iterable.length cs} hs -- TODO: Why hs, not [] ?
+    | .cont cs =>
+      let offset' := s.offset + Iterable.length cs
+      cok.2 cs { s with input := y.2, offset := offset', posState := reachOffsetNoLine offset' s.posState } hs -- TODO: Why hs, not [] ?
+    | .fin (cs, _) =>
+      let offset' := s.offset + Iterable.length cs
+      cok.2 cs { s with input := y.2, offset := offset', posState := reachOffsetNoLine offset' s.posState } hs -- TODO: Why hs, not [] ?
     -- TODO: This is COPY PASTA!
 
   takeWhile1P ol ρ := fun _ s cok _ _ eerr => do
@@ -266,7 +275,8 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u}
         | .fin (c, _) =>
           eerr.2 (.trivial s.offset (got c) want) s
       else
-        cok.2 cs {s with offset := s.offset + n, input := y.2} hs
+        let offset' := s.offset + n
+        cok.2 cs { s with offset := offset', input := y.2, posState := reachOffsetNoLine offset' s.posState } hs
     let y : (Chunk α × ℘) ← Straume.takeWhile ρ s.input
     match y.1 with
     | .nil =>
@@ -289,7 +299,9 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u}
       | .some ell => [[ell]]
     let want := .ofList (hs.headD []) compare
     let y : (Chunk α × ℘) ← Straume.takeN n s.input
-    let ok cs := cok.2 cs {s with offset := s.offset + n, input := y.2} hs
+    let ok cs :=
+      let offset' := s.offset + n
+      cok.2 cs { s with offset := offset', input := y.2, posState := reachOffsetNoLine offset' s.posState } hs
     match y.1 with
     | .nil => eerr.2 (.trivial s.offset (.some ErrorItem.eof) want) s
     | .cont cs => ok cs
