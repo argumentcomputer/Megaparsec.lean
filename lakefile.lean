@@ -20,3 +20,5 @@ lean_exe megaparsec {
   supportInterpreter := true
   root := "Main"
 }
+
+lean_exe Tests.Lisp
