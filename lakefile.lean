@@ -21,4 +21,5 @@ lean_exe megaparsec {
   root := "Main"
 }
 
+lean_exe Tests.Parsec
 lean_exe Tests.Lisp
