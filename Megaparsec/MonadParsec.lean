@@ -307,7 +307,7 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u}
   updateParserState φ := fun _ s _ _ eok _ =>
     eok.2 PUnit.unit (φ s) []
 
-instance [Monoid w] [Monad m] [Ord β] [Ord E]
+instance [Monoid w] [OfNat w 1] [Monad m] [Ord β] [Ord E]
          [mₚ : MonadParsec m ℘ α E β]
          [mₗ : MonadLiftT m (RWST r w σ m)]
          : MonadParsec (RWST r w σ m) ℘ α E β where
@@ -322,7 +322,8 @@ instance [Monoid w] [Monad m] [Ord β] [Ord E]
     pure (Unit.unit, s, One.one)
   withRecovery φ p := fun r s =>
     mₚ.withRecovery ℘ α (fun e => (φ e) r s) (p r s)
-  observing p := fun r s => Either.fixs' s <$> mₚ.observing ℘ α (p r s)
+  observing p := fun r s =>
+    Either.Correctness.fixs' s <$> mₚ.observing ℘ α (p r s)
   eof := mₗ.monadLift $ mₚ.eof ℘ α E β
   token ρ errorCtx := mₗ.monadLift $ mₚ.token ℘ α E ρ errorCtx
   tokens f l := mₗ.monadLift $ mₚ.tokens ℘ E β f l
@@ -345,7 +346,7 @@ instance statetInstance
   withRecovery cont st x :=
     mₚ.withRecovery ℘ α (fun e => (cont e) x) $ st x
   observing p x :=
-    Either.fixs x <$> (mₚ.observing ℘ α $ p x)
+    Either.Correctness.fixs x <$> (mₚ.observing ℘ α $ p x)
   eof := liftM $ mₚ.eof ℘ α E β
   token p errorCtx :=
     liftM $ mₚ.token ℘ α E p errorCtx
