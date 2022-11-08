@@ -73,6 +73,7 @@ inductive ErrorFancy (E : Type u) where
   | fail (msg : String)
   | indent (ord : Ordering) (fromPos : Pos) (uptoPos : Pos)
   | custom (e : E)
+  deriving BEq
 
 private def compareOrderings : Ordering → Ordering → Ordering
   | .gt, .gt => .eq

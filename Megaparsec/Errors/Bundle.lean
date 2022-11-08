@@ -14,6 +14,7 @@ open Megaparsec.Streamable
 structure ParseErrorBundle (β ℘ E : Type u) where
   errors : NEList (ParseError β E)
   posState : PosState ℘
+  deriving BEq
 
 -- Helper that makes necessary functions for the `ToString` instance.
 private def makePEBfs [Printable β] [ToString E] [Streamable ℘] : ((String → String) × PosState ℘) → ParseError β E → ((String → String) × PosState ℘)

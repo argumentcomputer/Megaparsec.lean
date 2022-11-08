@@ -18,6 +18,17 @@ inductive ParseError (β E : Type u) where
   | fancy (offset: Nat) (expected: RBSet (ErrorFancy E)
                              (cmp : ErrorFancy E → ErrorFancy E → Ordering))
 
+/-
+  This instance compares two `ParseError`s, completely disregarding the
+  comparison function of its `RBSet`s. Use with caution.
+-/
+instance [BEq β] [BEq E] : BEq (ParseError β E) where beq
+  | .trivial o1 u1 e1, .trivial o2 u2 e2 =>
+      o1 == o2 && u1 == u2 && e1.toList == e2.toList
+  | .fancy o1 e1, .fancy o2 e2 =>
+      o1 == o2 && e1.toList == e2.toList
+  | _, _ => false
+
 -- Get the offset of a `ParseError`.
 def errorOffset : ParseError β E → Nat
   | .trivial offset _ _ => offset
