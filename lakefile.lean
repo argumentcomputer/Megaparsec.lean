@@ -22,4 +22,5 @@ lean_exe megaparsec {
 }
 
 lean_exe Tests.Parsec
+lean_exe Tests.StateT
 lean_exe Tests.Lisp
