@@ -30,11 +30,11 @@ def stateTest : TestSeq :=
     pure parsed
 
   withExceptError "StateT with failing parser: fails"
-    (Either.either .error .ok $ parse (StateT.run ptSO 1) sample)
+    (parse (StateT.run ptSO 1) sample)
     (fun _ => .done) ++
 
   withExceptOk "StateT parsing successful"
-    (Either.either .error .ok $ parse (StateT.run ptST 1) sample)
+    (parse (StateT.run ptST 1) sample)
     (fun (s, x) =>
       test "state is 42" (x = 42) $
       test "empty string parsed out" (s = "")
