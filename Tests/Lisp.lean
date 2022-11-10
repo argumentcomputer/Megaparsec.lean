@@ -13,15 +13,11 @@ open Megaparsec.Printable
 open Megaparsec.Streamable
 open LispParser
 
-private def toExcept : Either α β → Except α β
-  | .right x => .ok x
-  | .left e => .error e
-
 private def parseAndJoin (p : Parsec β ℘ E (List String)) (src : ℘)
                          [ToString E] [Printable β] [Streamable ℘] :=
   match parse p src with
-  | .right xs => String.join xs
-  | .left  es => s!"Error: {es}"
+  | .ok xs => String.join xs
+  | .error  es => s!"Error: {es}"
 
 def ignoreTest : TestSeq :=
   let commentSrc := "   ; hello, world!"
@@ -51,7 +47,7 @@ private def expectedA : Lisp := .string ("a", r' 1 4)
 
 private def mkLispTest (str : String) (expected : Lisp) : TestSeq :=
   group s!"{str}" $
-    withExceptOk "parsing successful" (toExcept $ parse lispParser str)
+    withExceptOk "parsing successful" (parse lispParser str)
     fun resulting => test "as expected" (resulting == expected)
 
 def lispTest : TestSeq :=

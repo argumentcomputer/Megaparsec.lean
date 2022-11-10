@@ -36,14 +36,11 @@ def main := do
     parseT (string "ab" *> string "cd" <* eol <* eof : PIO String) ("", h')
 
   lspecIO $
-    withExceptOk "file, manual newline: parsing successful"
-      (Either.either .error .ok fIO)
+    withExceptOk "file, manual newline: parsing successful" fIO
       (fun s => test "parsed out 'abcd'" $ s = "abcd") ++
 
-    withExceptOk "file, no newline: parsing successful"
-      (Either.either .error .ok fnlIO)
+    withExceptOk "file, no newline: parsing successful" fnlIO
       (fun s => test "parsed out 'abcd'" $ s = "abcd") ++
 
-    withExceptOk "file, newline combinator: parsing successful"
-      (Either.either .error .ok fIO')
+    withExceptOk "file, newline combinator: parsing successful" fIO'
       (fun s => test "parsed out 'cd'" $ s = "cd")
