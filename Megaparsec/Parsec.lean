@@ -143,7 +143,7 @@ open StreamErrors in
 open Outcome in
 instance [Ord β] : Alternative (ParsecT m β ℘ E) where
   failure := fun _ s _ _ _ eerr =>
-    let empty : Std.RBMap (ErrorItem β) Unit compare := default
+    let empty : Std.RBSet (ErrorItem β) compare := default
     eerr.2 (.trivial s.offset .none empty) s
   orElse guess thunk :=
     fun xi s cok cerr eok eerr =>
@@ -178,24 +178,24 @@ open Megaparsec.Errors.Bundle
 /- Extracts the end result from ParsecT run and presents it as a tuple under inner monad. -/
 def runParserT' {m : Type u → Type v} {β ℘ E γ : Type u}
                 (p : ParsecT m β ℘ E γ) (s₀ : State β ℘ E) [Monad m]
-                : m (State β ℘ E × (Either (ParseErrorBundle β ℘ E) γ)) := do
+                : m (State β ℘ E × (Except (ParseErrorBundle β ℘ E) γ)) := do
   let reply ← runParsecT p s₀
   let s₁ := reply.state
   pure $
     match reply.result with
     | .ok x =>
       match NEList.nonEmpty $ s₁.parseErrors with
-      | .none => (s₁, Either.right x)
-      | .some pes => (s₁, .left $ toBundle s₀ pes)
-    | .err e => (s₁, .left (toBundle s₀ $ List.toNEList e s₁.parseErrors))
+      | .none => (s₁, .ok x)
+      | .some pes => (s₁, .error $ toBundle s₀ pes)
+    | .err e => (s₁, .error (toBundle s₀ $ List.toNEList e s₁.parseErrors))
 
 def parseTestTP {m : Type → Type v} {β ℘ E : Type} {γ : Type}
                 (p : ParsecT m β ℘ E γ) (xs : ℘) (srcName := "(test run)") [ToString E] [Printable β] [ToString γ] [Monad m] [MonadLiftT m IO] [Streamable ℘]
-                : IO (Bool × Either Unit γ) := do
+                : IO (Bool × Except Unit γ) := do
   let reply ← liftM $ runParserT' p (initialState srcName xs)
   match reply.2 with
-  | .left e => IO.println e >>= fun _ => pure $ (false, Either.left ())
-  | .right y => IO.println y >>= fun _ => pure $ (true, Either.right y)
+  | .error e => IO.println e >>= fun _ => pure $ (false, .error ())
+  | .ok y => IO.println y >>= fun _ => pure $ (true, .ok y)
 
 /- Extracts the end result from Parsec run and presents it as a tuple as is (under Id monad). -/
 def runParserS (p : Parsec β ℘ E γ) (s₀ : State β ℘ E) :=
@@ -223,19 +223,19 @@ def parse (p : Parsec β ℘ E γ) (xs : ℘) :=
 end
 
 def parsesT? (p : ParsecT m β ℘ E γ) (xs : ℘) [Monad m] :=
-  parseT p xs >>= (pure ∘ Either.isRight)
+  parseT p xs >>= (pure ∘ Except.isOk)
 
 def parses? (p : Parsec β ℘ E γ) (xs : ℘) :=
-  Either.isRight $ parse p xs
+  Except.isOk $ parse p xs
 
 /- Test some parser polymorphically. -/
 def parseTestP (p : Parsec β ℘ E γ) [ToString γ] [Printable β] [ToString E]
-  (xs : ℘) [Streamable ℘] : IO (Bool × Either Unit γ) :=
+  (xs : ℘) [Streamable ℘] : IO (Bool × Except Unit γ) :=
   match parseP p "" xs with
-  | .left es => IO.println s!"{es}" >>= fun _ => pure $ (false, Either.left ())
-  | .right y => IO.println y >>= fun _ => pure $ (true, Either.right y)
+  | .error es => IO.println s!"{es}" >>= fun _ => pure $ (false, .error ())
+  | .ok y => IO.println y >>= fun _ => pure $ (true, .ok y)
 
 def parseTest (p : Parsec β ℘ E γ) [ToString γ] [Printable β] [ToString E] (xs : ℘) [Streamable ℘] : String :=
   match parseP p "" xs with
-  | .left es => s!"Err: {es}"
-  | .right y => s!"Ok: {y}"
+  | .error es => s!"Err: {es}"
+  | .ok y => s!"Ok: {y}"

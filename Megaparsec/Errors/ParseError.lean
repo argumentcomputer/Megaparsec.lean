@@ -1,8 +1,7 @@
 import Megaparsec.Errors
 import Megaparsec.Printable
-import YatimaStdLib
 
-open Std (RBMap)
+open Std (RBSet)
 
 open Megaparsec.Errors
 open Megaparsec.Printable
@@ -14,10 +13,21 @@ section
 inductive ParseError (β E : Type u) where
   | trivial (offset: Nat)
             (unexpected: Option (ErrorItem β))
-            (expected: RBMap (ErrorItem β) Unit
+            (expected: RBSet (ErrorItem β)
                              (cmp : ErrorItem β → ErrorItem β → Ordering))
-  | fancy (offset: Nat) (expected: RBMap (ErrorFancy E) Unit
+  | fancy (offset: Nat) (expected: RBSet (ErrorFancy E)
                              (cmp : ErrorFancy E → ErrorFancy E → Ordering))
+
+/-
+  This instance compares two `ParseError`s, completely disregarding the
+  comparison function of its `RBSet`s. Use with caution.
+-/
+instance [BEq β] [BEq E] : BEq (ParseError β E) where beq
+  | .trivial o1 u1 e1, .trivial o2 u2 e2 =>
+      o1 == o2 && u1 == u2 && e1.toList == e2.toList
+  | .fancy o1 e1, .fancy o2 e2 =>
+      o1 == o2 && e1.toList == e2.toList
+  | _, _ => false
 
 -- Get the offset of a `ParseError`.
 def errorOffset : ParseError β E → Nat
@@ -27,21 +37,17 @@ def errorOffset : ParseError β E → Nat
 /-
   Because we want to not require any instances in structures and type class
   definitions, we define this not particularly well-defined function that
-  merges two unit maps regardless of `cmp` functions, always merging _into_
-  the first `RBMap`, i.e. the result will have `cmp` function of
+  merges two sets regardless of `cmp` functions, always merging _into_
+  the first `RBSet`, i.e. the result will have `cmp` function of
   the first argument.
 
   This function is very jackal and ideally should not be used at all.
 
   TODO: better solution that still doesn't involve `Ord` in `ParseError`?
 -/
-def mergeKeySetsAny (t₁ : RBMap α Unit cmp₁) (t₂ : RBMap α Unit cmp₂)
-                    : RBMap α Unit cmp₁ :=
-  t₂.foldl (init := t₁) fun t₁ a b₂ =>
-    t₁.insert a <|
-      match t₁.find? a with
-      | some b₁ => b₁
-      | none => b₂
+def mergeSetsAny (t₁ : RBSet α cmp₁) (t₂ : RBSet α cmp₂)
+                    : RBSet α cmp₁ :=
+  t₂.foldl (init := t₁) .insert
 
 end
 
@@ -75,7 +81,6 @@ def messageItemsPretty (pref : String) (ts : List String) : String :=
   except for its position. The rendered `String` always ends with a
   newline.
 -/
-open Std.RBMap in
 def parseErrorTextPretty : ParseError β E → String
   | .trivial _ us es =>
     if us.isNone && es.isEmpty
@@ -83,11 +88,11 @@ def parseErrorTextPretty : ParseError β E → String
       else
         let o := Option.map (fun ei => [toString ei]) us
         messageItemsPretty "unexpected " (o.getD []) ++
-        messageItemsPretty "expecting " (List.map toString $ toList es.keys)
+        messageItemsPretty "expecting " (List.map toString $ es.toList)
   | .fancy _ es =>
     if es.isEmpty
       then "unknown fancy parse error"
-      else String.intercalate "\n" $ List.map toString $ toList es.keys
+      else String.intercalate "\n" $ List.map toString $ es.toList
 
 def parseErrorPretty (e : ParseError β E) : String :=
   s!"offset={errorOffset e}:\n{parseErrorTextPretty e}"

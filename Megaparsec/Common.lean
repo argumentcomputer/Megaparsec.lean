@@ -27,11 +27,11 @@ universe u
 
 section
 
-def single {m : Type u → Type v} {℘ α E β : Type u} [MonadParsec m ℘ α E β] [BEq β] (x : β) : m β :=
+def single {m : Type u → Type v} {℘ α E β : Type u} [i : MonadParsec m ℘ α E β] [BEq β] (x : β) : m β :=
   MonadParsec.token ℘ α E (fun y => if x == y then .some x else .none) [ErrorItem.tokens $ NEList.uno x]
 
 -- TODO: case-insensitive version
-def string {m : Type u → Type v} {℘ α E β : Type u} [MonadParsec m ℘ α E β] [BEq α] (x : α) : m α :=
+def string {m : Type u → Type v} {℘ α E β : Type u} [i : MonadParsec m ℘ α E β] [BEq α] (x : α) : m α :=
   MonadParsec.tokens ℘ E β (BEq.beq) x
 
 instance : Ord PUnit where
@@ -68,6 +68,32 @@ partial def many1 {m : Type u → Type v} {℘ α β E : Type u} {γ : Type u}
                   : m (List γ) :=
     @some m ℘ α β E γ pi mi ai p
 
+section
+
+variable (m : Type u → Type v) (℘ β α E : Type u)
+  [MonadParsec (ParsecT m β ℘ E) ℘ α E β] [Alternative (ParsecT m β ℘ E)]
+
+mutual
+  partial def someP {γ : Type u} (p : ParsecT m β ℘ E γ) : ParsecT m β ℘ E (List γ) := do
+    let y ← p
+    let ys ← manyP p
+    pure $ y :: ys
+
+  partial def manyP {γ : Type u} (p : ParsecT m β ℘ E γ) : ParsecT m β ℘ E (List γ) := do
+    someP p <|> pure []
+end
+
+mutual
+  partial def sepEndBy1P {γ : Type u} (p : ParsecT m β ℘ E γ) (sep : ParsecT m β ℘ E γ') := do
+    let y ← p
+    let ys ← (sep *> sepEndByP p sep)
+    pure $ y :: ys
+
+  partial def sepEndByP {γ : Type u} (p : ParsecT m β ℘ E γ) (sep : ParsecT m β ℘ E γ') :=
+    sepEndBy1P p sep <|> pure []
+end
+
+end
 -- mutual
 --   partial def sepEndBy1 [Alternative φ] [Inhabited (φ (List α))] (p : φ α) (sep : φ β) : φ (List α) :=
 --     Seq.liftSeq2 List.cons p fun () => ((sep *> sepEndBy p sep) <|> pure [])
@@ -118,7 +144,7 @@ def choice' {m : Type → Type v} {β ℘ E γ : Type} (ps : List (ParsecT m β 
   List.foldr (fun a b => a <|> b) Alternative.failure ps
 
 /- m-polymorphic choice -/
-def choice {m : Type → Type v} {℘ α E β : Type} {γ : Type} [MonadParsec m ℘ α E β] [Alternative m]
+def choice {m : Type → Type v} {℘ α E β : Type} {γ : Type} [i : MonadParsec m ℘ α E β] [Alternative m]
   (ps : List (m γ))
   : m γ :=
   List.foldr (fun a b => a <|> b) Alternative.failure ps

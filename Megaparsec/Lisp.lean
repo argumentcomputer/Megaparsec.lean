@@ -1,8 +1,7 @@
-import Megaparsec.Parsec
-import Megaparsec.MonadParsec
-import Megaparsec.Common
 import Megaparsec.Char
-import Megaparsec.String
+import Megaparsec.Common
+import Megaparsec.MonadParsec
+import Megaparsec.Parsec
 import Megaparsec.ParserState
 
 import YatimaStdLib
@@ -10,8 +9,6 @@ import YatimaStdLib
 open MonadParsec
 open Megaparsec.Parsec
 open Megaparsec.Common
-open Megaparsec.Char
-open Megaparsec.String
 open Megaparsec.ParserState
 
 namespace Megaparsec.Lisp
@@ -32,6 +29,7 @@ def specialChars := '"' :: ('\\' :: "()#,'`| ;".data)
 inductive Lisp where
 | string : (String × Range) → Lisp
 | list : (List Lisp × Range) → Lisp
+  deriving Repr, BEq
 
 private def strToString (sr : (String × Range)) : String := s!"\"{sr.1}\""
 private partial def listLispToList (xsr : (List Lisp × Range)) : List String :=
@@ -49,85 +47,48 @@ private partial def listLispToList (xsr : (List Lisp × Range)) : List String :=
 instance : ToString Lisp where
   toString x := match x with
   | .string s => strToString s
-  | .list xs => unwords $ listLispToList xs
+  | .list xs => String.intercalate " " $ listLispToList xs
 
-variable (m : Type → Type v) (℘ : Type)
-  [MonadParsec (ParsecT m Char ℘ Unit) ℘ String Unit Char]
-  [Inhabited (ParsecT m Char ℘ Unit Lisp)]
-  [Inhabited (ParsecT m Char ℘ Unit (Range → Lisp))]
+namespace LispParser
 
-mutual
-  partial def someP (p : ParsecT m Char ℘ Unit γ) : ParsecT m Char ℘ Unit (List γ) := do
-    let y ← p
-    let ys ← manyP p
-    pure $ y :: ys
-  partial def manyP (p : ParsecT m Char ℘ Unit γ) : ParsecT m Char ℘ Unit (List γ) := do
-    someP p <|> pure []
-  partial def sepEndBy1P (p : ParsecT m Char ℘ Unit γ) (sep : ParsecT m Char ℘ Unit γ') := do
-    let y ← p
-    let ys ← (sep *> sepEndByP p sep)
-    pure $ y :: ys
-  partial def sepEndByP (p : ParsecT m Char ℘ Unit γ) (sep : ParsecT m Char ℘ Unit γ') :=
-    sepEndBy1P p sep <|> pure []
-end
+variable {m : Type → Type v} {℘ : Type}
+  [im : MonadParsec (ParsecT m Char ℘ Unit) ℘ String Unit Char]
 
-structure LispLinearParsers where
-  s := string_parsecT m ℘
-  c := char_parsecT m ℘
-  quoteAnyChar := c.char '\\' *> c.anySingle
-  stringP :=
-    s.label "string" $ do
-    let (str : String) ←
-      Seq.between (c.char '"') (c.char '"') $
-        String.mk <$> (manyP m ℘ $ quoteAnyChar <|> c.noneOf "\\\"".data)
-    pure $ fun r => Lisp.string (str, r)
-  commentP := s.label "comment" $
-    c.char ';' *>
-    manyP m ℘
-      (c.noneOf "\r\n".data) *>
-      (c.eol <|> (c.eof *> pure ""))
-  ignore := manyP m ℘ (c.char ' ' *> pure " " <|> commentP)
+def quoteAnyChar := single (i := im) '\\' *> anySingle (i := im)
+
+def stringP := label (i := im) "string" $ do
+  let (str : String) ←
+    Seq.between (single (i := im) '"') (single (i := im) '"') $
+      String.mk <$> (manyP m ℘ Char Unit $ quoteAnyChar <|> noneOf (i := im) "\\\"".data)
+  pure $ fun r => Lisp.string (str, r)
+
+def commentP := label (i := im) "comment" $ do
+  discard $ single (i := im) ';'
+  let comment ← manyP m ℘ Char Unit $ noneOf (i := im) "\r\n".data
+  discard $ Megaparsec.Char.eol (im := im) <|> (eof (i := im) *> pure "")
+  pure $ s!";{String.mk comment}"
+
+def ignore :=
+  manyP m ℘ Char Unit $ single (i := im) ' ' *> pure " " <|> commentP
+
 
 mutual
 
   partial def lispParser : ParsecT m Char ℘ Unit Lisp :=
-    withRange String lispExprP
+    withRange (i := im) String lispExprP
 
   partial def listP : ParsecT m Char ℘ Unit (Range → Lisp) :=
-    let p : LispLinearParsers m ℘ := {}
-    p.s.label "list" $ do
-    Seq.between (p.c.char '(') (p.c.char ')') $ do
-      let ys ← sepEndByP m ℘ lispParser p.ignore
+    label (i := im) "list" $ do
+    Seq.between (single (i := im) '(') (single (i := im) ')') $ do
+      let ys ← sepEndByP m ℘ Char Unit lispParser ignore
       pure $ fun r => Lisp.list (ys, r)
 
   partial def lispExprP : ParsecT m Char ℘ Unit (Range → Lisp) :=
-    let p : LispLinearParsers m ℘ := {}
     choice' [
-      p.s.attempt p.stringP,
+      attempt (i := im) stringP,
       listP
     ]
 
 end
 
-structure LispRecursiveParsers where
-  lispParser := lispParser m ℘
-  lispExprP := lispExprP m ℘
-  listP := listP m ℘
-
-structure LispParsers where
-  l : LispLinearParsers m ℘ := {}
-  r : LispRecursiveParsers m ℘ := {}
-  s := l.s
-  c := l.c
-  quoteAnyChar := l.quoteAnyChar
-  stringP := l.stringP
-  commentP := l.commentP
-  ignore := l.ignore
-  listP := r.listP
-  lispExprP := r.lispExprP
-  lispParser := r.lispParser
-
-def lisp_simple (x : Type)
-                [MonadParsec (Parsec Char x Unit) x String Unit Char]
-                : LispParsers Id x := {}
-def lisp_file : LispParsers IO (String × IO.FS.Handle) := {}
+end LispParser

@@ -4,7 +4,6 @@ import YatimaStdLib
 import Straume.Iterator
 import Megaparsec.Ok
 import Megaparsec.Err
-import Std.Data.RBMap
 
 open Straume.Iterator (Iterable)
 open Megaparsec.Errors
@@ -38,13 +37,13 @@ def mergeErrors (e₁: ParseError β E)
         match (e₁, e₂) with
           | (ParseError.trivial s₁ u₁ p₁, .trivial _ u₂ p₂) =>
              match (u₁, u₂) with
-               | (.none, .none) => .trivial s₁ .none $ mergeKeySetsAny p₁ p₂
-               | (.some x, .some y) => .trivial s₁ (.some (eiMax x y)) $ mergeKeySetsAny p₁ p₂
-               | (.none, .some x) => .trivial s₁ (.some x) $ mergeKeySetsAny p₁ p₂
-               | (.some x, .none)=> .trivial s₁ (.some x) $ mergeKeySetsAny p₁ p₂
+               | (.none, .none) => .trivial s₁ .none $ mergeSetsAny p₁ p₂
+               | (.some x, .some y) => .trivial s₁ (.some (eiMax x y)) $ mergeSetsAny p₁ p₂
+               | (.none, .some x) => .trivial s₁ (.some x) $ mergeSetsAny p₁ p₂
+               | (.some x, .none)=> .trivial s₁ (.some x) $ mergeSetsAny p₁ p₂
           | (.fancy _ _, .trivial _ _ _) => e₁
           | (.trivial _ _ _, .fancy _ _) => e₂
-          | (.fancy s₁ x₁, .fancy _ x₂) => .fancy s₁ $ mergeKeySetsAny x₁ x₂
+          | (.fancy s₁ x₁, .fancy _ x₂) => .fancy s₁ $ mergeSetsAny x₁ x₂
     | Ordering.gt => e₁
 
 def toHints (streamPos : Nat) (e : ParseError β E) : Hints β :=
@@ -52,7 +51,7 @@ def toHints (streamPos : Nat) (e : ParseError β E) : Hints β :=
     | ParseError.fancy _ _ => []
     | ParseError.trivial errOffset _ ps =>
         if streamPos == errOffset
-           then (if ps.isEmpty then [] else [ps.keys])
+           then (if ps.isEmpty then [] else [ps.toList])
            else []
 
 def refreshLastHint (h : Hints β) (m : Option (ErrorItem β)) : Hints β :=

@@ -2,46 +2,34 @@ import Megaparsec.Parsec
 import Megaparsec.MonadParsec
 import Straume.Coco
 import Megaparsec.Common
-import Megaparsec.String
 import Megaparsec.ParserState
 
 open MonadParsec
 open Megaparsec.Parsec
 open Straume.Coco
 open Megaparsec.Common
-open Megaparsec.String
 open Megaparsec.ParserState
 
 namespace Megaparsec.Char
 
 universe v
 
-variable (m : Type → Type v) (℘ E : Type) (α : Type := String)
-         [MonadParsec m ℘ α E Char] [MonadParsec m ℘ String E Char]
+variable {m : Type → Type v} {℘ E α : Type}
+         [im : MonadParsec m ℘ α E Char]
          [Alternative m]
 
-structure CharSimple where
-  s : StringSimple m ℘ E := {}
-  char (x : Char) : m Char := @single m ℘ α E Char inferInstance inferInstance x
-  char' (x : Char) : m Char := @choice m ℘ α E Char Char inferInstance inferInstance [ char x.toLower, char x.toUpper ]
-  anySingle : m Char := @anySingle m ℘ α E Char inferInstance
-  newline := char '\n'
-  cr := char '\r'
-  crlf : m String := s.stringP "\r\n"
-  eol : m String :=
-    MonadParsec.label ℘ α E Char
-      "end of line" $
-      (newline *> pure "\n") <|> crlf
-  eof : m Unit :=
-    MonadParsec.eof ℘ α E Char
-  satisfy (f : Char → Bool) := @satisfy m ℘ α E Char inferInstance f
-  noneOf (xs : List Char) := @noneOf m ℘ α E Char inferInstance inferInstance xs
-  oneOf (xs : List Char) := @oneOf m ℘ α E Char inferInstance inferInstance xs
-  tab : m Char := char '\t'
+def char' (x : Char) :=
+  choice (i := im) [single (i := im) x.toLower, single (i := im) x.toUpper]
 
-def char_simple (℘x : Type) [MonadParsec (Parsec Char ℘x Unit) ℘x String Unit Char] : CharSimple (Parsec Char ℘x Unit) ℘x Unit := {}
-def char_simple_pure : CharSimple (Parsec Char String Unit) String Unit := {}
+def tab := single (i := im) '\t'
 
-def char_parsecT (mx : Type → Type v) (℘x : Type)
-                 [MonadParsec (ParsecT mx Char ℘x Unit) ℘x String Unit Char]
-                 : CharSimple (ParsecT mx Char ℘x Unit) ℘x Unit := {}
+def newline := single (i := im) '\n'
+
+def cr := single (i := im) '\r'
+
+def crlf := attempt (i := im) $
+  newline (im := im) *> cr (im := im) *> pure "\r\n"
+
+def eol := label (i := im)
+  "end of line" $
+  (newline (im := im) *> pure "\n") <|> crlf (im := im)

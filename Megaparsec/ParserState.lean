@@ -18,6 +18,7 @@ structure SourcePos where
   name : String
   line : Pos
   column: Pos
+  deriving Repr, DecidableEq
 
 -- Pretty-print a `SourcePos`.
 def sourcePosPretty : SourcePos → String
@@ -31,6 +32,7 @@ def initialSourcePos (sourceName : String) : SourcePos :=
 structure Range where
   first : SourcePos
   last : SourcePos
+  deriving Repr, DecidableEq
 
 instance : ToString Range where
   toString x := s!"<{sourcePosPretty x.first},{sourcePosPretty x.last}>"
@@ -48,6 +50,7 @@ structure PosState (℘ : Type u) where
   sourcePos : SourcePos
   tabWidth : Nat
   linePrefix : String
+  deriving Repr, BEq
 
 /- Supports parsing by tracking consumed parts of stream and tracking errors. -/
 structure State (β ℘ E : Type u) where
