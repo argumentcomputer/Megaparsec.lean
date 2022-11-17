@@ -16,7 +16,7 @@ universe v
 
 variable {m : Type → Type v} {℘ E α : Type}
          [im : MonadParsec m ℘ α E Char]
-         [Alternative m]
+         [Alternative m] [SeqLeft m] [SeqRight m]
 
 def char' (x : Char) :=
   choice (i := im) [single (i := im) x.toLower, single (i := im) x.toUpper]
@@ -33,3 +33,6 @@ def crlf := attempt (i := im) $
 def eol := label (i := im)
   "end of line" $
   (newline (im := im) *> pure "\n") <|> crlf (im := im)
+
+def between (begin' : Char) (end' : Char) (p : m α) : m α :=
+  Seq.between (single (i := im) begin') (single (i := im) end') p
