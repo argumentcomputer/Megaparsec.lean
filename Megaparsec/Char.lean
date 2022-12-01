@@ -34,5 +34,5 @@ def eol := label (i := im)
   "end of line" $
   (newline (im := im) *> pure "\n") <|> crlf (im := im)
 
-def between (begin' : Char) (end' : Char) (p : m α) : m α :=
+def between (begin' : Char) (end' : Char) (p : m γ) : m γ :=
   Seq.between (single (i := im) begin') (single (i := im) end') p
