@@ -1,4 +1,4 @@
-import Megaparsec.String
+import Megaparsec
 
 /-!
 # A Megaparsec tutorial
@@ -74,7 +74,7 @@ So we can define the parser for the grammar as follows:
 * An element of our grammar is either an atom or a list
 * A list is a sequence of elements of the grammar
 
-We also consume blank characters before and 
+We also consume blank characters before and
 -/
 partial def grammarP : P Grammar := do
   blanksP -- discard blank characters before anything
@@ -109,9 +109,7 @@ end
 
 /-- Now we can write the final function for parsing source code -/
 def parseGrammar (code : String) : Except String Grammar :=
-  match parse grammarP code with
-  | .left err => throw (toString err)
-  | .right g => return g
+  Except.mapError toString $ parse grammarP code
 
 #eval parseGrammar "(add 0 3)"
 -- Except.ok

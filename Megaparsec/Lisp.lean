@@ -6,10 +6,11 @@ import Megaparsec.ParserState
 
 import YatimaStdLib
 
-open MonadParsec
-open Megaparsec.Parsec
+open Megaparsec.Char
 open Megaparsec.Common
+open Megaparsec.Parsec
 open Megaparsec.ParserState
+open MonadParsec
 
 namespace Megaparsec.Lisp
 
@@ -58,7 +59,7 @@ def quoteAnyChar := single (i := im) '\\' *> anySingle (i := im)
 
 def stringP := label (i := im) "string" $ do
   let (str : String) ←
-    Seq.between (single (i := im) '"') (single (i := im) '"') $
+    between (im := im) '"' '"' $
       String.mk <$> (manyP m ℘ Char Unit $ quoteAnyChar <|> noneOf (i := im) "\\\"".data)
   pure $ fun r => Lisp.string (str, r)
 
@@ -70,7 +71,6 @@ def commentP := label (i := im) "comment" $ do
 
 def ignore :=
   manyP m ℘ Char Unit $ single (i := im) ' ' *> pure " " <|> commentP
-
 
 mutual
 
