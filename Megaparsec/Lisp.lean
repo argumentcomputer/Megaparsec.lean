@@ -79,7 +79,7 @@ mutual
 
   partial def listP : ParsecT m Char ℘ Unit (Range → Lisp) :=
     label (i := im) "list" $ do
-    Seq.between (single (i := im) '(') (single (i := im) ')') $ do
+    between (im := im) '(' ')' $ do
       let ys ← sepEndByP m ℘ Char Unit lispParser ignore
       pure $ fun r => Lisp.list (ys, r)
 
