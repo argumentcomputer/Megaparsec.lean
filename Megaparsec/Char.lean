@@ -3,6 +3,7 @@ import Megaparsec.MonadParsec
 import Straume.Coco
 import Megaparsec.Common
 import Megaparsec.ParserState
+import YatimaStdLib.Seq
 
 open MonadParsec
 open Megaparsec.Parsec
