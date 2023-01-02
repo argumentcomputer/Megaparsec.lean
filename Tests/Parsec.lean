@@ -6,7 +6,6 @@ import Megaparsec.Common
 import Megaparsec.Errors
 import Megaparsec.Parsec
 import Megaparsec.ParserState
-import YatimaStdLib
 
 open LSpec
 

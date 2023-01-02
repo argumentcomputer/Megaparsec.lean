@@ -8,7 +8,10 @@ import Straume
 import Straume.Chunk
 import Straume.Iterator
 
-import YatimaStdLib
+import YatimaStdLib.Either
+import YatimaStdLib.Option
+import YatimaStdLib.RWST
+import YatimaStdLib.Monad
 
 open Std (RBSet)
 
@@ -322,52 +325,52 @@ instance [Monoid w] [OfNat w 1] [Monad m] [Ord β] [Ord E]
          [mₚ : MonadParsec m ℘ α E β]
          [mₗ : MonadLiftT m (RWST r w σ m)]
          : MonadParsec (RWST r w σ m) ℘ α E β where
-  parseError err := mₗ.monadLift $ mₚ.parseError ℘ α err
-  label l p := fun r s => mₚ.label ℘ α E β l (p r s)
-  attempt st := fun r s => mₚ.attempt ℘ α E β (st r s)
+  parseError err := mₗ.monadLift $ mₚ.parseError err
+  label l p := fun r s => mₚ.label l (p r s)
+  attempt st := fun r s => mₚ.attempt (st r s)
   lookAhead st := fun r s => do
-    let (x, _, _) ← mₚ.lookAhead ℘ α E β (st r s)
+    let (x, _, _) ← mₚ.lookAhead (st r s)
     pure (x, s, One.one)
   notFollowedBy st := fun r s => do
-    mₚ.notFollowedBy ℘ α E β $ void $ st r s
+    mₚ.notFollowedBy $ void $ st r s
     pure (Unit.unit, s, One.one)
   withRecovery φ p := fun r s =>
-    mₚ.withRecovery ℘ α (fun e => (φ e) r s) (p r s)
+    mₚ.withRecovery (fun e => (φ e) r s) (p r s)
   observing p := fun r s =>
-    Either.Correctness.fixs' s <$> mₚ.observing ℘ α (p r s)
-  eof := mₗ.monadLift $ mₚ.eof ℘ α E β
-  token ρ errorCtx := mₗ.monadLift $ mₚ.token ℘ α E ρ errorCtx
-  tokens f l := mₗ.monadLift $ mₚ.tokens ℘ E β f l
-  takeWhileP ol ρ := mₗ.monadLift $ mₚ.takeWhileP ℘ E ol ρ
-  takeWhile1P ol ρ := mₗ.monadLift $ mₚ.takeWhile1P ℘ E ol ρ
-  takeP ol n := mₗ.monadLift $ mₚ.takeP ℘ E β ol n
-  getParserState := mₗ.monadLift $ mₚ.getParserState α
-  updateParserState φ := mₗ.monadLift $ mₚ.updateParserState α φ
+    Either.Correctness.fixs' s <$> mₚ.observing (p r s)
+  eof := mₗ.monadLift $ mₚ.eof
+  token ρ errorCtx := mₗ.monadLift $ mₚ.token ρ errorCtx
+  tokens f l := mₗ.monadLift $ mₚ.tokens f l
+  takeWhileP ol ρ := mₗ.monadLift $ mₚ.takeWhileP ol ρ
+  takeWhile1P ol ρ := mₗ.monadLift $ mₚ.takeWhile1P ol ρ
+  takeP ol n := mₗ.monadLift $ mₚ.takeP ol n
+  getParserState := mₗ.monadLift $ mₚ.getParserState
+  updateParserState φ := mₗ.monadLift $ mₚ.updateParserState φ
 
 instance statetInstance
          [Monad m] [Alternative m] [Ord β] [Ord E]
          [mₚ : MonadParsec m ℘ α E β]
          : MonadParsec (StateT σ m) ℘ α E β where
-  parseError err := liftM $ mₚ.parseError ℘ α err
-  label l p := (mₚ.label ℘ α E β l) ∘ p
-  attempt st := (mₚ.attempt ℘ α E β) ∘ st
-  lookAhead st := (mₚ.lookAhead ℘ α E β) ∘ st
+  parseError err := liftM $ mₚ.parseError err
+  label l p := (mₚ.label l) ∘ p
+  attempt st := (mₚ.attempt) ∘ st
+  lookAhead st := (mₚ.lookAhead) ∘ st
   notFollowedBy st x :=
-    Monad.seqComp (mₚ.notFollowedBy ℘ α E β (Prod.fst <$> st x)) $ pure (Unit.unit, x)
+    Monad.seqComp (mₚ.notFollowedBy (Prod.fst <$> st x)) $ pure (Unit.unit, x)
   withRecovery cont st x :=
-    mₚ.withRecovery ℘ α (fun e => (cont e) x) $ st x
+    mₚ.withRecovery (fun e => (cont e) x) $ st x
   observing p x :=
-    Either.Correctness.fixs x <$> (mₚ.observing ℘ α $ p x)
-  eof := liftM $ mₚ.eof ℘ α E β
+    Either.Correctness.fixs x <$> (mₚ.observing $ p x)
+  eof := liftM $ mₚ.eof
   token p errorCtx :=
-    liftM $ mₚ.token ℘ α E p errorCtx
+    liftM $ mₚ.token p errorCtx
   tokens f l :=
-    liftM $ mₚ.tokens ℘ E β f l
-  takeWhileP ol ρ := liftM $ mₚ.takeWhileP ℘ E ol ρ
-  takeWhile1P ol ρ := liftM $ mₚ.takeWhile1P ℘ E ol ρ
-  takeP ol n := liftM $ mₚ.takeP ℘ E β ol n
-  getParserState := liftM $ mₚ.getParserState α
-  updateParserState φ := liftM $ mₚ.updateParserState α φ
+    liftM $ mₚ.tokens f l
+  takeWhileP ol ρ := liftM $ mₚ.takeWhileP ol ρ
+  takeWhile1P ol ρ := liftM $ mₚ.takeWhile1P ol ρ
+  takeP ol n := liftM $ mₚ.takeP ol n
+  getParserState := liftM $ mₚ.getParserState
+  updateParserState φ := liftM $ mₚ.updateParserState φ
 
 def withRange (α : Type u) (p : ParsecT m β ℘ E (Range → γ)) [i : MonadParsec (ParsecT m β ℘ E) ℘ α E β] : ParsecT m β ℘ E γ := do
   let s₀ : State β ℘ E ← MonadParsec.getParserState α

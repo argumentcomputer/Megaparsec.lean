@@ -1,5 +1,5 @@
-import YatimaStdLib
 import Straume.Iterator
+import YatimaStdLib.NonEmpty
 
 open Straume.Iterator
 

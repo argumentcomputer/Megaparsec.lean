@@ -2,8 +2,6 @@ import Megaparsec.Errors
 import Megaparsec.Errors.ParseError
 import Megaparsec.ParserState
 
-import YatimaStdLib
-
 open Megaparsec.Errors
 open Megaparsec.Errors.ParseError
 open Megaparsec.ParserState

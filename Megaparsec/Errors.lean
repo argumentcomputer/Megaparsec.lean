@@ -1,4 +1,3 @@
-import YatimaStdLib
 import Megaparsec.Pos
 import Megaparsec.Printable
 
