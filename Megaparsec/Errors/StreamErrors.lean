@@ -1,6 +1,5 @@
 import Megaparsec.Errors
 import Megaparsec.Errors.ParseError
-import YatimaStdLib
 import Straume.Iterator
 import Megaparsec.Ok
 import Megaparsec.Err

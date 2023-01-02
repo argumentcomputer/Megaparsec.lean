@@ -5,8 +5,6 @@ import Straume.Coco
 import Straume
 import Megaparsec.Errors
 
-import YatimaStdLib
-
 open MonadParsec
 open Megaparsec.Parsec
 open Straume.Iterator (Iterable)

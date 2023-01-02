@@ -8,7 +8,10 @@ import Straume
 import Straume.Chunk
 import Straume.Iterator
 
-import YatimaStdLib
+import YatimaStdLib.Either
+import YatimaStdLib.Option
+import YatimaStdLib.RWST
+import YatimaStdLib.Monad
 
 open Std (RBSet)
 

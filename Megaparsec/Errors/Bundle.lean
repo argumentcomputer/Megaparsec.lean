@@ -2,7 +2,6 @@ import Megaparsec.Errors.ParseError
 import Megaparsec.ParserState
 import Megaparsec.Printable
 import Megaparsec.Streamable
-import YatimaStdLib
 
 namespace Megaparsec.Errors.Bundle
 

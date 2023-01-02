@@ -2,8 +2,6 @@ import Megaparsec.Err
 import Megaparsec.Errors
 import Megaparsec.Errors.Bundle
 import Megaparsec.Errors.StreamErrors
--- import Megaparsec.Errors.StateErrors
--- import Megaparsec.Errors.StreamErrors
 import Megaparsec.Ok
 import Megaparsec.ParserState
 import Megaparsec.Printable
@@ -13,8 +11,6 @@ import Straume.Chunk
 import Straume.Coco
 import Straume.Flood
 import Straume.Iterator
-
-import YatimaStdLib
 
 namespace Megaparsec.Parsec
 

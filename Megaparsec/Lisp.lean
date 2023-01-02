@@ -4,8 +4,6 @@ import Megaparsec.MonadParsec
 import Megaparsec.Parsec
 import Megaparsec.ParserState
 
-import YatimaStdLib
-
 open Megaparsec.Char
 open Megaparsec.Common
 open Megaparsec.Parsec

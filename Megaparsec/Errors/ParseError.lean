@@ -1,5 +1,6 @@
 import Megaparsec.Errors
 import Megaparsec.Printable
+import Std.Data.RBMap
 
 open Std (RBSet)
 
