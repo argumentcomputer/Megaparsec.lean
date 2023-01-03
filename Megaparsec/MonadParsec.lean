@@ -8,7 +8,6 @@ import Straume
 import Straume.Chunk
 import Straume.Iterator
 
-import YatimaStdLib.Either
 import YatimaStdLib.Option
 import YatimaStdLib.RWST
 import YatimaStdLib.Monad
@@ -66,7 +65,7 @@ class MonadParsec (m : Type u → Type v) (℘ α E β : Type u) where
   /- Use recovery function `φ` to recover from failure in `m γ`. -/
   withRecovery : (φ : ParseError β E → m γ) → m γ → m γ
   /- Observes errors as they happen, without backtracking. -/
-  observing : m γ → m (Either (ParseError β E) γ)
+  observing : m γ → m (Except (ParseError β E) γ)
   /- The parser only succeeds at the end of the stream. -/
   eof : m PUnit
   /- If `φ` is `.some`, parse the token.
@@ -127,6 +126,14 @@ private def nelstr (x : Char) (xs : String) := match NEList.nonEmptyString xs wi
   | .some xs' => NEList.cons x xs'
   | .none => NEList.uno x
 
+def fixs (c : χ) : Except ε (α × τ) → (Except ε α) × χ
+  | .error  e  => (.error  e, c)
+  | .ok (a, _) => (.ok a, c)
+
+def fixs' [OfNat M (nat_lit 1)] (c : χ) : Except ε (α × τ × M) → (Except ε α) × χ × M
+  | .error  e     => (.error  e, c, 1)
+  | .ok (a, _, m) => (.ok a, c, m)
+
 @[default_instance]
 instance theInstance {m : Type u → Type v} {α β ℘ E : Type u} [Streamable ℘]
                      [Monad m] [Iterable α β] [Iterable.Bijection β α] [Inhabited α] [@Straume m ℘ Chunk α β] [Ord β] [Ord E]
@@ -181,8 +188,8 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u} [Streamable 
     p xi s cok (Consumed.mk, err) eok (Empty.mk, err $ hs' β ℘ E)
 
   observing p := fun xi s cok _ eok _ =>
-    let err (fHs := (hs₀ β ℘ E)) e s' := cok.2 (.left e) s' (fHs s' e)
-    p xi s (cok.1, cok.2 ∘ .right) (Consumed.mk, err) (eok.1, eok.2 ∘ .right) (Empty.mk, err (hs' β ℘ E))
+    let err (fHs := (hs₀ β ℘ E)) e s' := cok.2 (.error e) s' (fHs s' e)
+    p xi s (cok.1, cok.2 ∘ .ok) (Consumed.mk, err) (eok.1, eok.2 ∘ .ok) (Empty.mk, err (hs' β ℘ E))
 
   eof := fun _ s _ _ eok eerr => do
       let y : (Chunk β × ℘) ← Straume.take1 α s.input
@@ -336,8 +343,7 @@ instance [Monoid w] [OfNat w 1] [Monad m] [Ord β] [Ord E]
     pure (Unit.unit, s, One.one)
   withRecovery φ p := fun r s =>
     mₚ.withRecovery (fun e => (φ e) r s) (p r s)
-  observing p := fun r s =>
-    Either.Correctness.fixs' s <$> mₚ.observing (p r s)
+  observing p := fun r s => fixs' s <$> mₚ.observing (p r s)
   eof := mₗ.monadLift $ mₚ.eof
   token ρ errorCtx := mₗ.monadLift $ mₚ.token ρ errorCtx
   tokens f l := mₗ.monadLift $ mₚ.tokens f l
@@ -359,8 +365,7 @@ instance statetInstance
     Monad.seqComp (mₚ.notFollowedBy (Prod.fst <$> st x)) $ pure (Unit.unit, x)
   withRecovery cont st x :=
     mₚ.withRecovery (fun e => (cont e) x) $ st x
-  observing p x :=
-    Either.Correctness.fixs x <$> (mₚ.observing $ p x)
+  observing p x := fixs x <$> (mₚ.observing $ p x)
   eof := liftM $ mₚ.eof
   token p errorCtx :=
     liftM $ mₚ.token p errorCtx
@@ -417,7 +422,7 @@ def withRecovery {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.Monad
   MonadParsec.MonadParsec.withRecovery ℘ α
 
 def observing {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β] {γ : Type u}
-  : m γ → m (Either (Megaparsec.Errors.ParseError.ParseError β E) γ) :=
+  : m γ → m (Except (Megaparsec.Errors.ParseError.ParseError β E) γ) :=
   MonadParsec.MonadParsec.observing ℘ α
 
 def eof {m: Type u → Type v} {℘ α E β: Type u} [i : MonadParsec.MonadParsec m ℘ α E β] : m PUnit :=
