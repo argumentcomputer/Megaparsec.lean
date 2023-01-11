@@ -7,13 +7,13 @@ package Megaparsec
 lean_lib Megaparsec
 
 require LSpec from git
-  "https://github.com/yatima-inc/LSpec" @ "129fd4ba76d5cb9abf271dc29208a28f45fd981e"
+  "https://github.com/yatima-inc/LSpec" @ "88f7d23e56a061d32c7173cea5befa4b2c248b41"
 
 require YatimaStdLib from git
-  "https://github.com/yatima-inc/YatimaStdLib.lean" @ "515b7eff7765dcf55ce275ac41fa13a30a59f1d0"
+  "https://github.com/yatima-inc/YatimaStdLib.lean" @ "704823e421b333ea9960347e305c60f654618422"
 
 require Straume from git
-  "https://github.com/yatima-inc/straume" @ "10fffb9ddcb015b7d1251e2495e20cdbaebc79b1"
+  "https://github.com/yatima-inc/straume" @ "f06aab93bf3692a98188b1810d51003237e9027e"
 
 @[default_target]
 lean_exe megaparsec {

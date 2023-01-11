@@ -4,24 +4,24 @@
  [{"git":
    {"url": "https://github.com/yatima-inc/YatimaStdLib.lean",
     "subDir?": null,
-    "rev": "515b7eff7765dcf55ce275ac41fa13a30a59f1d0",
+    "rev": "704823e421b333ea9960347e305c60f654618422",
     "name": "YatimaStdLib",
-    "inputRev?": "515b7eff7765dcf55ce275ac41fa13a30a59f1d0"}},
+    "inputRev?": "704823e421b333ea9960347e305c60f654618422"}},
   {"git":
    {"url": "https://github.com/yatima-inc/straume",
     "subDir?": null,
-    "rev": "10fffb9ddcb015b7d1251e2495e20cdbaebc79b1",
+    "rev": "f06aab93bf3692a98188b1810d51003237e9027e",
     "name": "Straume",
-    "inputRev?": "10fffb9ddcb015b7d1251e2495e20cdbaebc79b1"}},
+    "inputRev?": "f06aab93bf3692a98188b1810d51003237e9027e"}},
   {"git":
    {"url": "https://github.com/yatima-inc/LSpec",
     "subDir?": null,
-    "rev": "129fd4ba76d5cb9abf271dc29208a28f45fd981e",
+    "rev": "88f7d23e56a061d32c7173cea5befa4b2c248b41",
     "name": "LSpec",
-    "inputRev?": "129fd4ba76d5cb9abf271dc29208a28f45fd981e"}},
+    "inputRev?": "88f7d23e56a061d32c7173cea5befa4b2c248b41"}},
   {"git":
    {"url": "https://github.com/leanprover/std4/",
     "subDir?": null,
-    "rev": "2919713bde15d55e3ea3625a03546531283bcb54",
+    "rev": "fde95b16907bf38ea3f310af406868fc6bcf48d1",
     "name": "std",
-    "inputRev?": "2919713bde15d55e3ea3625a03546531283bcb54"}}]}
+    "inputRev?": "fde95b16907bf38ea3f310af406868fc6bcf48d1"}}]}
