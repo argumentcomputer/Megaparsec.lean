@@ -4,15 +4,15 @@
  [{"git":
    {"url": "https://github.com/yatima-inc/YatimaStdLib.lean",
     "subDir?": null,
-    "rev": "704823e421b333ea9960347e305c60f654618422",
+    "rev": "649368d593f292227ab39b9fd08f6a448770dca8",
     "name": "YatimaStdLib",
-    "inputRev?": "704823e421b333ea9960347e305c60f654618422"}},
+    "inputRev?": "649368d593f292227ab39b9fd08f6a448770dca8"}},
   {"git":
    {"url": "https://github.com/yatima-inc/straume",
     "subDir?": null,
-    "rev": "f06aab93bf3692a98188b1810d51003237e9027e",
+    "rev": "9597873f0b18a9e97b7315fb84968c55d09a6112",
     "name": "Straume",
-    "inputRev?": "f06aab93bf3692a98188b1810d51003237e9027e"}},
+    "inputRev?": "9597873f0b18a9e97b7315fb84968c55d09a6112"}},
   {"git":
    {"url": "https://github.com/yatima-inc/LSpec",
     "subDir?": null,
