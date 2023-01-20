@@ -123,7 +123,7 @@ universe v
 private def hs₀ (β ℘ E : Type u) (_ : State β ℘ E) (_ : ParseError β E) : Hints β := []
 private def hs' (β ℘ E : Type u) (s' : State β ℘ E) (e : ParseError β E) := toHints (State.offset s') e
 private def nelstr (x : Char) (xs : String) := match NEList.nonEmptyString xs with
-  | .some xs' => NEList.cons x xs'
+  | .some xs' => NEList.cons x xs'.toList
   | .none => NEList.uno x
 
 def fixs (c : χ) : Except ε (α × τ) → (Except ε α) × χ

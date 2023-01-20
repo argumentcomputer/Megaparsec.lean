@@ -86,11 +86,10 @@ instance : Printable Char where
 instance : Printable String where
   showTokens nl :=
     let showStr str := (stringPretty <$> NEList.nonEmptyString str).getD ""
-    let rec go xs := match xs with
-      | ⟦x⟧ => [showStr x]
-      | "" :| xs => go xs
-      | x  :| xs => showStr x :: go xs
-    match String.join $ go nl with
+    let rec go x xs := match xs with
+      | [] => [showStr x]
+      | y :: ys => if x.isEmpty then go y ys else showStr x :: go y ys
+    match String.join $ go nl.head nl.tail with
     | "" => "empty string"
     | joined => s!"\"{joined}\""
 
@@ -101,7 +100,7 @@ open ByteArray in
 instance : Printable Bit where
   showTokens
     | ⟦b⟧ => s!"'{b}'"
-    | nl => let rec go xs := match xs with
-      | ⟦b⟧ => [toString b]
-      | b :| bs => toString b :: go bs
-      s!"\"{String.join $ go nl}\""
+    | nl => let rec go b xs := match xs with
+      | [] => [toString b]
+      | y :: ys => toString b :: go y ys
+      s!"\"{String.join $ go nl.head nl.tail}\""

@@ -59,9 +59,9 @@ variable {E : Type u} [ToString E]
 
 def NEList.spanToLast (ne : NEList α) : (List α × α) :=
   let rec go
-    | ⟦x⟧, acc => (acc, x)
-    | x :| xs, acc => go xs (x :: acc)
-  go ne []
+    | x, [], acc => (acc, x)
+    | x, y :: ys, acc => go y ys (x :: acc)
+  go ne.head ne.tail []
 
 -- Print a pretty list where items are separated with commas and the word
 -- “or” according to the rules of English punctuation.

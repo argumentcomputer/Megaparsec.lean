@@ -48,7 +48,7 @@ instance [ToString β] : ToString (ErrorItem β) where
   | .tokens t => match t with
     | ⟦x⟧ => s!"{x}"
     | x :| xs => "\"" ++
-      NEList.foldl (fun acc token => s!"{acc}{token}") (toString x) xs ++ "\""
+      xs.foldl (fun acc token => s!"{acc}{token}") (toString x) ++ "\""
 
 
 --                    TODO: make this a set
