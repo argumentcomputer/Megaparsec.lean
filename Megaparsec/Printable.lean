@@ -64,8 +64,8 @@ private def charPretty : Char → String
   | ch  => (charPretty' ch).getD $ s!"'{ch}'"
 
 private def stringPretty : NEList Char → String
-  | ⟦x⟧ => charPretty x
-  | ⟦'\r','\n'⟧ => "crlf newline"
+  | ⟨[x], _⟩ => charPretty x
+  | ['\r','\n'] => "crlf newline"
   | xs =>
     let f c := match charPretty' c with
       | .none => s!"{c}"
@@ -99,7 +99,7 @@ instance : Printable UInt8 where
 open ByteArray in
 instance : Printable Bit where
   showTokens
-    | ⟦b⟧ => s!"'{b}'"
+    | ⟨[b], _⟩ => s!"'{b}'"
     | nl => let rec go b xs := match xs with
       | [] => [toString b]
       | y :: ys => toString b :: go y ys
