@@ -45,10 +45,9 @@ instance [ToString β] : ToString (ErrorItem β) where
   toString
   | .eof => "end of input"
   | .label t => String.mk t.toList
-  | .tokens t => match t with
-    | ⟦x⟧ => s!"{x}"
-    | x :| xs => "\"" ++
-      xs.foldl (fun acc token => s!"{acc}{token}") (toString x) ++ "\""
+  | .tokens t =>
+    "\"" ++
+      t.data.foldl (fun acc token => s!"{acc}{token}") (toString t) ++ "\""
 
 
 --                    TODO: make this a set

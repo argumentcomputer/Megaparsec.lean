@@ -55,16 +55,16 @@ variable {m : Type → Type v} {℘ : Type}
 
 def quoteAnyChar := single (i := im) '\\' *> anySingle (i := im)
 
-def stringP := label (i := im) "string" $ do
+def stringP := label (_i := im) "string" $ do
   let (str : String) ←
     between (im := im) '"' '"' $
       String.mk <$> (manyP m ℘ Char Unit $ quoteAnyChar <|> noneOf (i := im) "\\\"".data)
   pure $ fun r => Lisp.string (str, r)
 
-def commentP := label (i := im) "comment" $ do
+def commentP := label (_i := im) "comment" $ do
   discard $ single (i := im) ';'
   let comment ← manyP m ℘ Char Unit $ noneOf (i := im) "\r\n".data
-  discard $ Megaparsec.Char.eol (im := im) <|> (eof (i := im) *> pure "")
+  discard $ Megaparsec.Char.eol (im := im) <|> (eof (_i := im) *> pure "")
   pure $ s!";{String.mk comment}"
 
 def ignore :=
@@ -73,17 +73,17 @@ def ignore :=
 mutual
 
   partial def lispParser : ParsecT m Char ℘ Unit Lisp :=
-    withRange (i := im) lispExprP
+    withRange (_i := im) lispExprP
 
   partial def listP : ParsecT m Char ℘ Unit (Range → Lisp) :=
-    label (i := im) "list" $ do
+    label (_i := im) "list" $ do
     between (im := im) '(' ')' $ do
       let ys ← sepEndByP m ℘ Char Unit lispParser ignore
       pure $ fun r => Lisp.list (ys, r)
 
   partial def lispExprP : ParsecT m Char ℘ Unit (Range → Lisp) :=
     choice' [
-      attempt (i := im) stringP,
+      attempt (_i := im) stringP,
       listP
     ]
 

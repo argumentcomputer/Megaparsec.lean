@@ -65,10 +65,12 @@ def NEList.spanToLast (ne : NEList α) : (List α × α) :=
 
 -- Print a pretty list where items are separated with commas and the word
 -- “or” according to the rules of English punctuation.
-def orList : NEList String → String
-  | ⟦x⟧ => x
-  | ⟦x,y⟧ => s!"{x} or {y}"
-  | xs => let (lxs, last) := NEList.spanToLast xs
+def orList (xs : NEList String) : String :=
+  match xs.data with
+  | [] => unreachable!
+  | [x] => x
+  | [x, y] => s!"{x} or {y}"
+  | _ => let (lxs, last) := NEList.spanToLast xs
     String.intercalate ", " lxs ++ ", or " ++ last
 
 -- Transform a list of error messages into their textual representation.

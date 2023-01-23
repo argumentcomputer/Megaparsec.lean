@@ -26,10 +26,10 @@ universe u
 section
 
 def single {m : Type u → Type v} {℘ α E β : Type u} [i : MonadParsec m ℘ α E β] [BEq β] (x : β) : m β :=
-  MonadParsec.token ℘ α E (fun y => if x == y then .some x else .none) [ErrorItem.tokens $ NEList.uno x]
+  MonadParsec.token ℘ α E (fun y => if x == y then .some x else .none) [ErrorItem.tokens $ NEList.mk (x :: []) (by simp)]
 
 -- TODO: case-insensitive version
-def string {m : Type u → Type v} {℘ α E β : Type u} [i : MonadParsec m ℘ α E β] [BEq α] (x : α) : m α :=
+def string {m : Type u → Type v} {℘ α E β : Type u} [_i : MonadParsec m ℘ α E β] [BEq α] (x : α) : m α :=
   MonadParsec.tokens ℘ E β (BEq.beq) x
 
 instance : Ord PUnit where
@@ -142,7 +142,7 @@ def choice' {m : Type → Type v} {β ℘ E γ : Type} (ps : List (ParsecT m β 
   List.foldr (fun a b => a <|> b) Alternative.failure ps
 
 /- m-polymorphic choice -/
-def choice {m : Type → Type v} {℘ α E β : Type} {γ : Type} [i : MonadParsec m ℘ α E β] [Alternative m]
+def choice {m : Type → Type v} {℘ α E β : Type} {γ : Type} [_i : MonadParsec m ℘ α E β] [Alternative m]
   (ps : List (m γ))
   : m γ :=
   List.foldr (fun a b => a <|> b) Alternative.failure ps

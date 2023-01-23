@@ -31,9 +31,9 @@ def duplicateErrorsTest : TestSeq :=
     withExceptError "parsing fails"
       (parse (p <|> p <|> p') "Yatima")
       fun errors =>
-        let es := match errors.errors with
-          | ⟦.trivial _ _ exs⟧ => exs.toList
-          | _ => [] -- impossible case for further testing
+        let es := match errors.errors.data with
+        | (.trivial _ _ exs) :: [] => exs.toList
+        | _ => [] -- impossible case for further testing
         let shouldBe := [
           ErrorItem.tokens (List.toNEList 'y' "atima".data),
           ErrorItem.tokens (List.toNEList 'y' "atima!".data)

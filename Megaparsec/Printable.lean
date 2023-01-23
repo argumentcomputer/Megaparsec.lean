@@ -63,14 +63,8 @@ private def charPretty : Char → String
   | ' ' => "space"
   | ch  => (charPretty' ch).getD $ s!"'{ch}'"
 
-private def stringPretty : NEList Char → String
-  | ⟦x⟧ => charPretty x
-  | ⟦'\r','\n'⟧ => "crlf newline"
-  | xs =>
-    let f c := match charPretty' c with
-      | .none => s!"{c}"
-      | .some pretty => s!"<{pretty}>"
-    s!"\"{String.join $ f <$> xs.toList}\""
+private def stringPretty : (NEList Char) → String :=
+  String.join ∘ (List.map charPretty) ∘ NEList.data
 
 --===========================================================--
 --=================== PRINTABLE INSTANCES ===================--
@@ -96,11 +90,9 @@ instance : Printable String where
 instance : Printable UInt8 where
   showTokens := stringPretty ∘ Functor.map (fun i => Char.ofNat $ i.toNat)
 
-open ByteArray in
 instance : Printable Bit where
-  showTokens
-    | ⟦b⟧ => s!"'{b}'"
-    | nl => let rec go b xs := match xs with
+  showTokens nl :=
+    let rec go b xs := match xs with
       | [] => [toString b]
       | y :: ys => toString b :: go y ys
-      s!"\"{String.join $ go nl.head nl.tail}\""
+    s!"\"{String.join $ go nl.head nl.tail}\""

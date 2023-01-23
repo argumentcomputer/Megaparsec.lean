@@ -10,10 +10,10 @@ require LSpec from git
   "https://github.com/yatima-inc/LSpec" @ "88f7d23e56a061d32c7173cea5befa4b2c248b41"
 
 require YatimaStdLib from git
-  "https://github.com/yatima-inc/YatimaStdLib.lean" @ "b3084d5fb020975555dabe507e6a4db659b0733d"
+  "https://github.com/yatima-inc/YatimaStdLib.lean" @ "856a4e605bc55e242202459871cdcca0b4ba857e"
 
 require Straume from git
-  "https://github.com/yatima-inc/straume" @ "9597873f0b18a9e97b7315fb84968c55d09a6112"
+  "https://github.com/yatima-inc/straume" @ "b242267483bf0ff9368609f40e57c001e337d565"
 
 @[default_target]
 lean_exe megaparsec {
