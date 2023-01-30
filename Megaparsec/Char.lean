@@ -20,7 +20,7 @@ variable {m : Type → Type v} {℘ E α : Type}
          [Alternative m] [SeqLeft m] [SeqRight m]
 
 def char' (x : Char) :=
-  choice (i := im) [single (i := im) x.toLower, single (i := im) x.toUpper]
+  choice (_i := im) [single (i := im) x.toLower, single (i := im) x.toUpper]
 
 def tab := single (i := im) '\t'
 
@@ -28,10 +28,10 @@ def newline := single (i := im) '\n'
 
 def cr := single (i := im) '\r'
 
-def crlf := attempt (i := im) $
+def crlf := attempt (_i := im) $
   newline (im := im) *> cr (im := im) *> pure "\r\n"
 
-def eol := label (i := im)
+def eol := label (_i := im)
   "end of line" $
   (newline (im := im) *> pure "\n") <|> crlf (im := im)
 

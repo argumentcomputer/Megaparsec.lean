@@ -123,8 +123,8 @@ universe v
 private def hs₀ (β ℘ E : Type u) (_ : State β ℘ E) (_ : ParseError β E) : Hints β := []
 private def hs' (β ℘ E : Type u) (s' : State β ℘ E) (e : ParseError β E) := toHints (State.offset s') e
 private def nelstr (x : Char) (xs : String) := match NEList.nonEmptyString xs with
-  | .some xs' => NEList.cons x xs'.toList
-  | .none => NEList.uno x
+  | .some xs' => NEList.mk (x :: xs'.toList) (by simp)
+  | .none => NEList.mk [x] (by simp)
 
 def fixs (c : χ) : Except ε (α × τ) → (Except ε α) × χ
   | .error  e  => (.error  e, c)
@@ -168,7 +168,7 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u} [Streamable 
   notFollowedBy p := fun xi s _ _ eok eerr => do
     let o := s.offset
     let y : (Chunk β × ℘) ← Straume.take1 α s.input
-    let c2e := ErrorItem.tokens ∘ NEList.uno
+    let c2e x := ErrorItem.tokens ∘ NEList.mk [x] $ by simp
     let subject : ErrorItem β := match y.1 with
     -- TODO: Here and in many other places, we have two branches that are the same because Parsec doesn't care about .fin vs .cont
     -- TODO: Perhaps, we should use Terminable and extract values
@@ -194,7 +194,7 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u} [Streamable 
   eof := fun _ s _ _ eok eerr => do
       let y : (Chunk β × ℘) ← Straume.take1 α s.input
       let singleton : RBSet (ErrorItem β) compare := .single .eof
-      let err c := eerr.2 (.trivial s.offset (.some $ ErrorItem.tokens $ NEList.uno c) singleton) s
+      let err c := eerr.2 (.trivial s.offset (.some $ ErrorItem.tokens $ NEList.mk [c] $ by simp) singleton) s
       match y.1 with
       | .nil => eok.2 PUnit.unit s []
       | .cont c => err c
@@ -207,7 +207,7 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u} [Streamable 
     let set := .ofList errorCtx compare
     let test c := match ρ c with
     | .none =>
-      eerr.2 (.trivial s.offset (.some $ ErrorItem.tokens $ NEList.uno c) set) s
+      eerr.2 (.trivial s.offset (.some $ ErrorItem.tokens $ NEList.mk [c] $ by simp) set) s
     | .some y' =>
       let offset' := s.offset + 1
       cok.2 y' {s with offset := offset', input := y.2, posState := reachOffsetNoLine offset' s.posState } []
@@ -276,7 +276,7 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u} [Streamable 
       let n := Iterable.length cs
       if (n == 0) then
         let yb : (Chunk β × ℘) ← (Straume.take1 α s.input)
-        let got c := .some (ErrorItem.tokens $ NEList.uno c)
+        let got c := .some (ErrorItem.tokens $ NEList.mk [c] $ by simp)
         match yb.1 with
         | .nil =>
           eerr.2 (.trivial s.offset (.some ErrorItem.eof) want) s
@@ -377,7 +377,7 @@ instance statetInstance
   getParserState := liftM $ mₚ.getParserState
   updateParserState φ := liftM $ mₚ.updateParserState φ
 
-def withRange (α : Type u) (p : ParsecT m β ℘ E (Range → γ)) [i : MonadParsec (ParsecT m β ℘ E) ℘ α E β] : ParsecT m β ℘ E γ := do
+def withRange (α : Type u) (p : ParsecT m β ℘ E (Range → γ)) [_i : MonadParsec (ParsecT m β ℘ E) ℘ α E β] : ParsecT m β ℘ E γ := do
   let s₀ : State β ℘ E ← MonadParsec.getParserState α
   let first := s₀.posState.sourcePos
   let go ← p
@@ -397,7 +397,7 @@ def parseError {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec m ℘ �
   : Megaparsec.Errors.ParseError.ParseError β E → m γ :=
   MonadParsec.MonadParsec.parseError ℘ α
 
-def label {m: Type u → Type v} {℘ α E β: Type u} [i : MonadParsec.MonadParsec m ℘ α E β] {γ : Type u}
+def label {m: Type u → Type v} {℘ α E β: Type u} [_i : MonadParsec.MonadParsec m ℘ α E β] {γ : Type u}
   : String → m γ → m γ :=
   MonadParsec.MonadParsec.label ℘ α E β
 
@@ -405,7 +405,7 @@ def hidden {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec
   : m γ → m γ :=
   MonadParsec.MonadParsec.hidden ℘ α E β
 
-def attempt {m: Type u → Type v} {℘ α E β: Type u} [i : MonadParsec.MonadParsec m ℘ α E β] {γ : Type u}
+def attempt {m: Type u → Type v} {℘ α E β: Type u} [_i : MonadParsec.MonadParsec m ℘ α E β] {γ : Type u}
   : m γ → m γ :=
   MonadParsec.MonadParsec.attempt ℘ α E β
 
@@ -425,7 +425,7 @@ def observing {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadPar
   : m γ → m (Except (Megaparsec.Errors.ParseError.ParseError β E) γ) :=
   MonadParsec.MonadParsec.observing ℘ α
 
-def eof {m: Type u → Type v} {℘ α E β: Type u} [i : MonadParsec.MonadParsec m ℘ α E β] : m PUnit :=
+def eof {m: Type u → Type v} {℘ α E β: Type u} [_i : MonadParsec.MonadParsec m ℘ α E β] : m PUnit :=
   MonadParsec.MonadParsec.eof ℘ α E β
 
 def token {m: Type u → Type v} {℘ α E β: Type u} [MonadParsec.MonadParsec m ℘ α E β]

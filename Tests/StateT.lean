@@ -18,14 +18,14 @@ def stateTest : TestSeq :=
 
   let ptSO : StateT Nat (Parsec Char String Unit) String := do
     let x0 ← MonadStateOf.get
-    let fail ← string (i := statetInstance) "fail me"
+    let fail ← string (_i := statetInstance) "fail me"
     MonadStateOf.set $ x0 + 41
     pure fail
 
   let ptST : StateT Nat (Parsec Char String Unit) String := do
     MonadStateOf.set $ 1
     let x0 ← StateT.get
-    let parsed ← string (i := statetInstance) "fail me" <|> pure ""
+    let parsed ← string (_i := statetInstance) "fail me" <|> pure ""
     MonadStateOf.set $ x0 + 41
     pure parsed
 
