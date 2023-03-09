@@ -26,7 +26,7 @@ universe u
 section
 
 def single {m : Type u → Type v} {℘ α E β : Type u} [i : MonadParsec m ℘ α E β] [BEq β] (x : β) : m β :=
-  MonadParsec.token ℘ α E (fun y => if x == y then .some x else .none) [ErrorItem.tokens $ NEList.mk [x] $ by simp]
+  MonadParsec.token ℘ α E (fun y => if x == y then .some x else .none) [ErrorItem.tokens [x]]
 
 -- TODO: case-insensitive version
 def string {m : Type u → Type v} {℘ α E β : Type u} [_i : MonadParsec m ℘ α E β] [BEq α] (x : α) : m α :=

@@ -4,9 +4,9 @@
  [{"git":
    {"url": "https://github.com/yatima-inc/YatimaStdLib.lean",
     "subDir?": null,
-    "rev": "533d71efa5853ff014f42c174d6321d74251209f",
+    "rev": "7af015ddd688052cd14f7dedea6856b943ed25ed",
     "name": "YatimaStdLib",
-    "inputRev?": "533d71efa5853ff014f42c174d6321d74251209f"}},
+    "inputRev?": "7af015ddd688052cd14f7dedea6856b943ed25ed"}},
   {"git":
    {"url": "https://github.com/yatima-inc/straume",
     "subDir?": null,
