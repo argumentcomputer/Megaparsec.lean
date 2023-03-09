@@ -66,8 +66,8 @@ def NEList.spanToLast (ne : NEList α) : (List α × α) :=
 -- Print a pretty list where items are separated with commas and the word
 -- “or” according to the rules of English punctuation.
 def orList : NEList String → String
-  | ⟨ [x], _ ⟩ => x
-  | ⟨ [x,y], _ ⟩ => s!"{x} or {y}"
+  | ⟨ x, [] ⟩ => x
+  | ⟨ x, [y] ⟩ => s!"{x} or {y}"
   | xs => let (lxs, last) := NEList.spanToLast xs
     String.intercalate ", " lxs ++ ", or " ++ last
 

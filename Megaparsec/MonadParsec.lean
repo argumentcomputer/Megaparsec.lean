@@ -122,9 +122,9 @@ universe v
 
 private def hs₀ (β ℘ E : Type u) (_ : State β ℘ E) (_ : ParseError β E) : Hints β := []
 private def hs' (β ℘ E : Type u) (s' : State β ℘ E) (e : ParseError β E) := toHints (State.offset s') e
-private def nelstr (x : Char) (xs : String) := match NEList.nonEmptyString xs with
-  | .some xs' => NEList.mk (x :: xs'.toList) (by simp)
-  | .none => NEList.mk [x] (by simp)
+private def nelstr (x : Char) (xs : String) : NEList Char := match NEList.nonEmptyString xs with
+  | .some xs' => x :: xs'.toList
+  | .none => [x]
 
 def fixs (c : χ) : Except ε (α × τ) → (Except ε α) × χ
   | .error  e  => (.error  e, c)
@@ -168,7 +168,7 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u} [Streamable 
   notFollowedBy p := fun xi s _ _ eok eerr => do
     let o := s.offset
     let y : (Chunk β × ℘) ← Straume.take1 α s.input
-    let c2e x := ErrorItem.tokens ∘ NEList.mk [x] $ by simp
+    let c2e x := ErrorItem.tokens [x]
     let subject : ErrorItem β := match y.1 with
     -- TODO: Here and in many other places, we have two branches that are the same because Parsec doesn't care about .fin vs .cont
     -- TODO: Perhaps, we should use Terminable and extract values
@@ -194,7 +194,7 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u} [Streamable 
   eof := fun _ s _ _ eok eerr => do
       let y : (Chunk β × ℘) ← Straume.take1 α s.input
       let singleton : RBSet (ErrorItem β) compare := .single .eof
-      let err c := eerr.2 (.trivial s.offset (.some $ ErrorItem.tokens $ NEList.mk [c] $ by simp) singleton) s
+      let err c := eerr.2 (.trivial s.offset (.some $ ErrorItem.tokens [c]) singleton) s
       match y.1 with
       | .nil => eok.2 PUnit.unit s []
       | .cont c => err c
@@ -207,7 +207,7 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u} [Streamable 
     let set := .ofList errorCtx compare
     let test c := match ρ c with
     | .none =>
-      eerr.2 (.trivial s.offset (.some $ ErrorItem.tokens $ NEList.mk [c] $ by simp) set) s
+      eerr.2 (.trivial s.offset (.some $ ErrorItem.tokens $ [c]) set) s
     | .some y' =>
       let offset' := s.offset + 1
       cok.2 y' {s with offset := offset', input := y.2, posState := reachOffsetNoLine offset' s.posState } []
@@ -276,7 +276,7 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u} [Streamable 
       let n := Iterable.length cs
       if (n == 0) then
         let yb : (Chunk β × ℘) ← (Straume.take1 α s.input)
-        let got c := .some (ErrorItem.tokens $ NEList.mk [c] $ by simp)
+        let got c := .some (ErrorItem.tokens [c])
         match yb.1 with
         | .nil =>
           eerr.2 (.trivial s.offset (.some ErrorItem.eof) want) s

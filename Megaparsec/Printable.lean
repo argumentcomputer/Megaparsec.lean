@@ -64,7 +64,7 @@ private def charPretty : Char → String
   | ch  => (charPretty' ch).getD $ s!"'{ch}'"
 
 private def stringPretty (xs : NEList Char) : String :=
-  match xs.data with
+  match xs.toList with
   | [x] => charPretty x
   | ['\r','\n'] => "crlf newline"
   | xs =>
@@ -100,5 +100,5 @@ instance : Printable UInt8 where
 open ByteArray in
 instance : Printable Bit where
   showTokens
-    | ⟨ [b], _ ⟩ => s!"'{b}'"
-    | ⟨ bs,  _ ⟩ => s!"\"{String.join $ bs.map ToString.toString}\""
+    | ⟨ b, [] ⟩ => s!"'{b}'"
+    | ⟨ b, bs ⟩ => s!"\"{String.join $ (b::bs).map ToString.toString}\""
