@@ -32,7 +32,7 @@ def duplicateErrorsTest : TestSeq :=
       (parse (p <|> p <|> p') "Yatima")
       fun errors =>
         let es := match errors.errors with
-          | ⟨ [.trivial _ _ exs], _ ⟩ => exs.toList
+          | ⟨ .trivial _ _ exs, [] ⟩ => exs.toList
           | _ => [] -- impossible case for further testing
         let shouldBe := [
           ErrorItem.tokens (List.toNEList 'y' "atima".data),
