@@ -13,7 +13,7 @@ require YatimaStdLib from git
   "https://github.com/yatima-inc/YatimaStdLib.lean" @ "7af015ddd688052cd14f7dedea6856b943ed25ed"
 
 require Straume from git
-  "https://github.com/yatima-inc/straume" @ "9597873f0b18a9e97b7315fb84968c55d09a6112"
+  "https://github.com/yatima-inc/straume" @ "568d412316c412433029046f899033d5839f7304"
 
 @[default_target]
 lean_exe megaparsec {

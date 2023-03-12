@@ -10,9 +10,9 @@
   {"git":
    {"url": "https://github.com/yatima-inc/straume",
     "subDir?": null,
-    "rev": "9597873f0b18a9e97b7315fb84968c55d09a6112",
+    "rev": "568d412316c412433029046f899033d5839f7304",
     "name": "Straume",
-    "inputRev?": "9597873f0b18a9e97b7315fb84968c55d09a6112"}},
+    "inputRev?": "568d412316c412433029046f899033d5839f7304"}},
   {"git":
    {"url": "https://github.com/yatima-inc/LSpec",
     "subDir?": null,
