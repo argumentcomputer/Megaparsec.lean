@@ -4,15 +4,15 @@
  [{"git":
    {"url": "https://github.com/lurk-lab/YatimaStdLib.lean",
     "subDir?": null,
-    "rev": "f549e2a841b0641b9385ecf41a270142b7ae506a",
+    "rev": "974c288349a412aea92bb0780efc81fa5f79e442",
     "name": "YatimaStdLib",
-    "inputRev?": "f549e2a841b0641b9385ecf41a270142b7ae506a"}},
+    "inputRev?": "974c288349a412aea92bb0780efc81fa5f79e442"}},
   {"git":
    {"url": "https://github.com/lurk-lab/straume",
     "subDir?": null,
-    "rev": "2b20e116ef23ea46a888ff71d192d5a5e59ae18f",
+    "rev": "94c21db8da739e9f344ee9c23c75fd4a00d538f9",
     "name": "Straume",
-    "inputRev?": "2b20e116ef23ea46a888ff71d192d5a5e59ae18f"}},
+    "inputRev?": "94c21db8da739e9f344ee9c23c75fd4a00d538f9"}},
   {"git":
    {"url": "https://github.com/lurk-lab/LSpec",
     "subDir?": null,
