@@ -10,10 +10,10 @@ require LSpec from git
   "https://github.com/lurk-lab/LSpec" @ "88f7d23e56a061d32c7173cea5befa4b2c248b41"
 
 require YatimaStdLib from git
-  "https://github.com/lurk-lab/YatimaStdLib.lean" @ "7af015ddd688052cd14f7dedea6856b943ed25ed"
+  "https://github.com/lurk-lab/YatimaStdLib.lean" @ "f549e2a841b0641b9385ecf41a270142b7ae506a"
 
 require Straume from git
-  "https://github.com/lurk-lab/straume" @ "568d412316c412433029046f899033d5839f7304"
+  "https://github.com/lurk-lab/straume" @ "2b20e116ef23ea46a888ff71d192d5a5e59ae18f"
 
 @[default_target]
 lean_exe megaparsec {

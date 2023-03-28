@@ -328,6 +328,8 @@ instance theInstance {m : Type u → Type v} {α β ℘ E : Type u} [Streamable 
   updateParserState φ := fun _ s _ _ eok _ =>
     eok.2 PUnit.unit (φ s) []
 
+open YatimaStdLib (Monoid One)
+
 instance [Monoid w] [OfNat w 1] [Monad m] [Ord β] [Ord E]
          [mₚ : MonadParsec m ℘ α E β]
          [mₗ : MonadLiftT m (RWST r w σ m)]
