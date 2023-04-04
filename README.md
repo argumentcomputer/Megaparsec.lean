@@ -25,7 +25,7 @@ def takeOneDigitP : Parsec Char String Unit (List Nat) :=
 `Parsec` has several type arguments: `β ℘ E γ : Type u`.
 
 - `β` is the atomic type. In our example, it's `Char`. That's the type of tokens parsed out of source `℘`.
-- `℘` is the source type. In our example, it's `String`. Tokens can be read out of the source via `Straume` facilities. `Straume` allows for transparently reading from files. If you want to read from a file, this type would be `(String × IO.FS.Handle)`. It would mean that finite chunks of type `String` are emitted from a, perhaps-larger-than-RAM file handled with somethign of type `IO.FS.Handle`. See `Main.lean` for a usage example! It's really simple!
+- `℘` is the source type. In our example, it's `String`. Tokens can be read out of the source via `Straume` facilities. `Straume` allows for transparently reading from files. If you want to read from a file, this type would be `(String × IO.FS.Handle)`. It would mean that finite chunks of type `String` are emitted from a, perhaps-larger-than-RAM file handled with somethign of type `IO.FS.Handle`. See `Tests/IO.lean` for a usage example! It's really simple!
 - `E` is the custom error type. For quick and dirty parsers, it's `Unit`, but if you want to get fancy, you can create custom errors and construct those based on your parser's fails.
 - `γ` is the type of the thing we're parsing out of the source. In this case, we're parsing a `String` (out of a `String`).
 
