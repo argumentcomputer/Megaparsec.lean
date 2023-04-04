@@ -2,6 +2,8 @@
 
 This is a port of the Haskell package [megaparsec](https://hackage.haskell.org/package/megaparsec) to Lean 4.
 
+Ask your questions to the authors on [Lurk Lab Zulip](https://zulip.yatima.io/#narrow/stream/24-yatima-tools/topic/.5BMegaparsec.2Elean.5D.20chat), and send PRs!
+
 # How to use it?
 
 ## Make your parser
@@ -94,7 +96,7 @@ Also, file-based parsing allows you to parse from files that are larger-than-RAM
 
 Check out stuff that `MonadParsec` exports, look around `char_simple` and `string_simple` APIs in `Megaparsec/Char.lean` and `Megaparsec/String.lean` respectively, and patch the example code so that it would _tolerate, but not require_ padding with spaces and the "end-of-line bar" while parsing a digit out of the input.
 
-Send your snippets to @cognivore in Yatima Inc's Zulip!
+Send your snippets to @cognivore in [Lurk Lab Zulip](https://zulip.yatima.io/#narrow/stream/24-yatima-tools/topic/.5BMegaparsec.2Elean.5D.20chat)!
 
 # Idea
 
