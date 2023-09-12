@@ -4,10 +4,10 @@
  [{"git":
    {"url": "https://github.com/lurk-lab/YatimaStdLib.lean",
     "subDir?": null,
-    "rev": "e2b5628fdf00b3acb8e253530b09520cad9ca308",
+    "rev": "5b64c5150e371fb280728cbb5b7c225b9c96b348",
     "opts": {},
     "name": "YatimaStdLib",
-    "inputRev?": "pull/98/head",
+    "inputRev?": "5b64c5150e371fb280728cbb5b7c225b9c96b348",
     "inherited": false}},
   {"git":
    {"url": "https://github.com/lurk-lab/straume",
@@ -15,7 +15,7 @@
     "rev": "053d9feccbface9a0b2c1a72447914376aac74ea",
     "opts": {},
     "name": "Straume",
-    "inputRev?": "main",
+    "inputRev?": "053d9feccbface9a0b2c1a72447914376aac74ea",
     "inherited": false}},
   {"git":
    {"url": "https://github.com/lurk-lab/LSpec",
@@ -23,7 +23,7 @@
     "rev": "3b6023654b917c8641ec5e626724a43380cff8f0",
     "opts": {},
     "name": "LSpec",
-    "inputRev?": "main",
+    "inputRev?": "3b6023654b917c8641ec5e626724a43380cff8f0",
     "inherited": false}},
   {"git":
    {"url": "https://github.com/leanprover/std4/",
@@ -31,5 +31,5 @@
     "rev": "642cbc9960b49a65a779b8fce56b05ff83cf9e35",
     "opts": {},
     "name": "std",
-    "inputRev?": "main",
+    "inputRev?": "642cbc9960b49a65a779b8fce56b05ff83cf9e35",
     "inherited": true}}]}
