@@ -25,13 +25,13 @@ def main := do
   let file := System.mkFilePath ["./Tests", "abcd.txt"]
   let fileNoNL := System.mkFilePath ["./Tests", "abcd-no-nl.txt"]
 
-  let h ← IO.FS.Handle.mk file IO.FS.Mode.read false
+  let h ← IO.FS.Handle.mk file IO.FS.Mode.read
   let fIO ← parseT abcdpnl ("", h)
 
-  let hnl ← IO.FS.Handle.mk fileNoNL IO.FS.Mode.read false
+  let hnl ← IO.FS.Handle.mk fileNoNL IO.FS.Mode.read
   let fnlIO ← parseT (string "abcd" <* eof : PIO String) ("", hnl)
 
-  let h' ← IO.FS.Handle.mk file IO.FS.Mode.read false
+  let h' ← IO.FS.Handle.mk file IO.FS.Mode.read
   let fIO' ←
     parseT (string "ab" *> string "cd" <* eol <* eof : PIO String) ("", h')
 
