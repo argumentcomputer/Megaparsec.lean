@@ -6,6 +6,14 @@ Ask your questions to the authors on [Lurk Lab Zulip](https://zulip.yatima.io/#n
 
 # How to use it?
 
+## Install
+
+Before you use the library, it's necessary to install it. To do this, add Megaparsec to your `lakefile.lean`:
+
+```lean
+require Megaparsec from git "https://github.com/lurk-lab/Megaparsec.lean.git"
+```
+
 ## Make your parser
 
 Let's write a parser that bites a digit off a string, but only if it's padded to the right with a space or a pipe symbol at the end of line or input:
